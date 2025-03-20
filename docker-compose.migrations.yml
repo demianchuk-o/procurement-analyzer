@@ -1,0 +1,10 @@
+version: '3.9'
+services:
+  migration_db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: tenderdb
+    ports:
+      - "5434:5432"

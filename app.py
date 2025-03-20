@@ -1,12 +1,15 @@
 from flask import Flask
+from flask_migrate import Migrate
+from config import Config
 
+from db import db
 app = Flask(__name__)
+app.config.from_object(Config)
+db.init_app(app)
 
+import models
 
-@app.route('/')
-def hello_world():  # put application's code here
-    return 'Hello World!'
-
+migrate = Migrate(app, db)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
