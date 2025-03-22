@@ -51,7 +51,6 @@ class TenderChange(db.Model):
     field_name = Column(String(50), nullable=False)
     old_value = Column(String)
     new_value = Column(String)
-    change_type = Column(String(50), nullable=False)
 
     # Relationship
     tender = db.relationship("Tender", back_populates="changes")

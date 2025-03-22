@@ -33,7 +33,6 @@ class ComplaintChange(db.Model):
     field_name = Column(String(50), nullable=False)
     old_value = Column(String)
     new_value = Column(String)
-    change_type = Column(String(50), nullable=False)
 
     #Relationships
     complaint = db.relationship("Complaint", back_populates="changes")

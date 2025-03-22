@@ -82,7 +82,6 @@ def upgrade():
     sa.Column('field_name', sa.String(length=50), nullable=False),
     sa.Column('old_value', sa.String(), nullable=True),
     sa.Column('new_value', sa.String(), nullable=True),
-    sa.Column('change_type', sa.String(length=50), nullable=False),
     sa.ForeignKeyConstraint(['tender_id'], ['tenders.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -140,7 +139,6 @@ def upgrade():
     sa.Column('field_name', sa.String(length=50), nullable=False),
     sa.Column('old_value', sa.String(), nullable=True),
     sa.Column('new_value', sa.String(), nullable=True),
-    sa.Column('change_type', sa.String(length=50), nullable=False),
     sa.ForeignKeyConstraint(['bid_id'], ['bids.id'], ),
     sa.ForeignKeyConstraint(['tender_id'], ['tenders.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -153,7 +151,6 @@ def upgrade():
     sa.Column('field_name', sa.String(length=50), nullable=False),
     sa.Column('old_value', sa.String(), nullable=True),
     sa.Column('new_value', sa.String(), nullable=True),
-    sa.Column('change_type', sa.String(length=50), nullable=False),
     sa.ForeignKeyConstraint(['complaint_id'], ['complaints.id'], ),
     sa.ForeignKeyConstraint(['tender_id'], ['tenders.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -166,7 +163,6 @@ def upgrade():
     sa.Column('field_name', sa.String(length=50), nullable=False),
     sa.Column('old_value', sa.String(), nullable=True),
     sa.Column('new_value', sa.String(), nullable=True),
-    sa.Column('change_type', sa.String(length=50), nullable=False),
     sa.ForeignKeyConstraint(['document_id'], ['tender_documents.id'], ),
     sa.ForeignKeyConstraint(['tender_id'], ['tenders.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -180,7 +176,6 @@ def upgrade():
     sa.Column('field_name', sa.String(length=50), nullable=False),
     sa.Column('old_value', sa.String(), nullable=True),
     sa.Column('new_value', sa.String(), nullable=True),
-    sa.Column('change_type', sa.String(length=50), nullable=False),
     sa.ForeignKeyConstraint(['award_id'], ['awards.id'], ),
     sa.ForeignKeyConstraint(['bid_id'], ['bids.id'], ),
     sa.ForeignKeyConstraint(['tender_id'], ['tenders.id'], ),
