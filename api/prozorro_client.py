@@ -4,6 +4,7 @@ from typing import Optional, Dict, List, Any
 
 import requests
 
+from schemas.tenders_page_schema import TendersPageSchema
 
 class ProzorroClient:
     # Publicly available API endpoint
@@ -33,7 +34,8 @@ class ProzorroClient:
             try:
                 response = requests.get(self.BASE_URL, params=params, timeout=self.timeout)
                 if response.status_code == 200:
-                    return response.json()
+                    page_schema = TendersPageSchema()
+                    return page_schema.load(response.json())
                 else:
                     self.logger.error(f"Status code {response.status_code} on attempt {attempt}/{self.retry_count}")
             except Exception as e:
