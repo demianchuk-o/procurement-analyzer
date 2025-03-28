@@ -15,9 +15,16 @@ class Award(db.Model):
     value_amount = Column(Numeric(18, 2))
     award_date = Column(DateTime)
 
+    # periods
+    complaint_period_start_date = Column(DateTime)
+    complaint_period_end_date = Column(DateTime)
+
     # Relationships
+    bid = relationship("Bid")
     tender = relationship("Tender", back_populates="awards")
-    bid = relationship("Bid", back_populates="award")
+    changes = relationship("AwardChange", back_populates="award",
+                           order_by="AwardChange.change_date",
+                           cascade="all, delete-orphan")
 
 
 class AwardChange(db.Model):
@@ -25,8 +32,6 @@ class AwardChange(db.Model):
 
     id = Column(Integer, primary_key=True)
     award_id = Column(String(32), ForeignKey('awards.id'), nullable=False)
-    tender_id = Column(String(32), ForeignKey('tenders.id'), nullable=False)
-    bid_id = Column(String(32), ForeignKey('bids.id'), nullable=False)
     change_date = Column(DateTime(timezone=True), nullable=False)
     field_name = Column(String(50), nullable=False)
     old_value = Column(String)
