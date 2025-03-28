@@ -6,12 +6,16 @@ from db import db
 class Tender(db.Model):
     __tablename__ = 'tenders'
 
-    id = Column(String(32), primary_key=True)
+    # core data
+    id = Column(String(32), primary_key=True) # 32-char UUID
+    ocid = Column(String(22), nullable=False)
     date_created = Column(DateTime, nullable=False)
     date_modified = Column(DateTime, nullable=False)
     title = Column(Text, nullable=False)
     value_amount = Column(Numeric(18, 2))
     status = Column(String)
+
+    # periods
     enquiry_period_start_date = Column(DateTime)
     enquiry_period_end_date = Column(DateTime)
     tender_period_start_date = Column(DateTime)
@@ -21,10 +25,12 @@ class Tender(db.Model):
     award_period_start_date = Column(DateTime)
     award_period_end_date = Column(DateTime)
     notice_publication_date = Column(DateTime)
-    item_classification_id = Column(String(32), ForeignKey('item_classifications.id'))
+
+    # classifier
+    general_classifier_id = Column(Integer, ForeignKey('general_classifiers.id'))
 
     # Relationships
-    item_classification = db.relationship("ItemClassification", back_populates="tenders")
+    general_classifier = db.relationship("GeneralClassifier", back_populates="tenders")
     awards = db.relationship("Award", back_populates="tender",
                             cascade="all, delete-orphan")
     bids = db.relationship("Bid", back_populates="tender",
@@ -36,10 +42,8 @@ class Tender(db.Model):
     changes = db.relationship("TenderChange", back_populates="tender",
                               order_by="TenderChange.changeDate",
                               cascade="all, delete-orphan")
-    violation_scores = db.relationship("ViolationScore", back_populates="tender",
-                                        cascade="all, delete-orphan")
-    subscriptions = db.relationship("UserSubscription", back_populates="tender",
-                                    cascade="all, delete-orphan")
+    violation_score = db.relationship("ViolationScore", back_populates="tender",
+                                     cascade="all, delete-orphan")
 
 
 class TenderChange(db.Model):
