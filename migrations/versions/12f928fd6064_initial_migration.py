@@ -104,7 +104,7 @@ def upgrade():
     op.create_table('user_subscriptions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('tender_id', sa.String(length=50), nullable=False),
+    sa.Column('tender_id', sa.String(length=32), nullable=False),
     sa.ForeignKeyConstraint(['tender_id'], ['tenders.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),

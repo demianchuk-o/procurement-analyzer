@@ -8,7 +8,7 @@ class UserSubscription(db.Model):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    tender_id = Column(String(50), ForeignKey('tenders.id'), nullable=False)
+    tender_id = Column(String(32), ForeignKey('tenders.id'), nullable=False)
 
     # Relationships
     user = db.relationship("User", back_populates="subscriptions")
