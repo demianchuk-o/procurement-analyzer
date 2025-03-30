@@ -26,7 +26,7 @@ class TenderDocument(db.Model):
 class TenderDocumentChange(db.Model):
     __tablename__ = 'tender_document_changes'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     document_id = Column(String(32), ForeignKey('tender_documents.id'), nullable=False)
     change_date = Column(DateTime(timezone=True), nullable=False)
     field_name = Column(String(50), nullable=False)

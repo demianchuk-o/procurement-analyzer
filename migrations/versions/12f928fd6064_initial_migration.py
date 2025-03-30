@@ -79,7 +79,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('tender_changes',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('tender_id', sa.String(length=50), nullable=False),
     sa.Column('change_date', sa.DateTime(timezone=True), nullable=False),
     sa.Column('field_name', sa.String(length=50), nullable=False),
@@ -137,7 +137,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('bid_changes',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('bid_id', sa.String(length=32), nullable=False),
     sa.Column('change_date', sa.DateTime(timezone=True), nullable=False),
     sa.Column('field_name', sa.String(length=50), nullable=False),
@@ -147,7 +147,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('complaint_changes',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('complaint_id', sa.String(length=32), nullable=False),
     sa.Column('change_date', sa.DateTime(timezone=True), nullable=False),
     sa.Column('field_name', sa.String(length=50), nullable=False),
@@ -157,7 +157,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('tender_document_changes',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('document_id', sa.String(length=32), nullable=False),
     sa.Column('change_date', sa.DateTime(timezone=True), nullable=False),
     sa.Column('field_name', sa.String(length=50), nullable=False),
@@ -167,7 +167,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('award_changes',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('award_id', sa.String(length=32), nullable=False),
     sa.Column('change_date', sa.DateTime(timezone=True), nullable=False),
     sa.Column('field_name', sa.String(length=50), nullable=False),

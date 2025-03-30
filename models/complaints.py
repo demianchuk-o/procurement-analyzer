@@ -25,7 +25,7 @@ class Complaint(db.Model):
 class ComplaintChange(db.Model):
     __tablename__ = 'complaint_changes'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     complaint_id = Column(String(32), ForeignKey('complaints.id'), nullable=False)
     change_date = Column(DateTime(timezone=True), nullable=False)
     field_name = Column(String(50), nullable=False)

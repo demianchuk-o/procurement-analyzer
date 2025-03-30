@@ -30,7 +30,7 @@ class Award(db.Model):
 class AwardChange(db.Model):
     __tablename__ = 'award_changes'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     award_id = Column(String(32), ForeignKey('awards.id'), nullable=False)
     change_date = Column(DateTime(timezone=True), nullable=False)
     field_name = Column(String(50), nullable=False)

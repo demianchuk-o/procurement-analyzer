@@ -49,7 +49,7 @@ class Tender(db.Model):
 class TenderChange(db.Model):
     __tablename__ = 'tender_changes'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     tender_id = Column(String(50), ForeignKey('tenders.id'), nullable=False)
     change_date = Column(DateTime(timezone=True), nullable=False)
     field_name = Column(String(50), nullable=False)
