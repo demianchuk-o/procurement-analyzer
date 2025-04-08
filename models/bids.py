@@ -17,6 +17,9 @@ class Bid(db.Model):
     tenderer_legal_name = Column(String)
 
     # Relationships
+    changes = db.relationship("BidChange", back_populates="bid",
+                              order_by="BidChange.change_date",
+                              cascade="all, delete-orphan")
     tender = db.relationship("Tender", back_populates="bids")
 
 

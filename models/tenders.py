@@ -40,7 +40,7 @@ class Tender(db.Model):
     documents = db.relationship("TenderDocument", back_populates="tender",
                                  cascade="all, delete-orphan")
     changes = db.relationship("TenderChange", back_populates="tender",
-                              order_by="TenderChange.changeDate",
+                              order_by="TenderChange.change_date",
                               cascade="all, delete-orphan")
     violation_score = db.relationship("ViolationScore", back_populates="tender",
                                      cascade="all, delete-orphan")

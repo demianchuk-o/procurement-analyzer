@@ -12,9 +12,6 @@ class User(db.Model):
     email = Column(String(255), unique=True, nullable=False)
     _password_hash = Column(String(255), nullable=False)
 
-    # Relationships
-    subscriptions = db.relationship("UserSubscription", back_populates="user", cascade="all, delete-orphan")
-
     # Properties
     @hybrid_property
     def password_hash(self):

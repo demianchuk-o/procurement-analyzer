@@ -16,5 +16,5 @@ class ViolationScore(db.Model):
     date_calculated = Column(DateTime, default=db.func.now(), nullable=False)
 
     # Relationship
-    tender = db.relationship("Tender", back_populates="violation_scores")
+    tender = db.relationship("Tender", back_populates="violation_score")
 
