@@ -26,7 +26,7 @@ def upgrade():
     sa.UniqueConstraint('scheme', 'description', name='uq_scheme_description')
     )
     op.create_table('users',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('email', sa.String(length=255), nullable=False),
     sa.Column('_password_hash', sa.String(length=255), nullable=False),
     sa.PrimaryKeyConstraint('id'),
@@ -102,7 +102,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('user_subscriptions',
-    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('tender_id', sa.String(length=32), nullable=False),
     sa.ForeignKeyConstraint(['tender_id'], ['tenders.id'], ),
