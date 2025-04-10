@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Optional, TypeVar, Generic, List, Any
+from typing import Optional, TypeVar, Generic, Any
+
 from sqlalchemy.orm import Session
+
 from db import db
 
 T = TypeVar('T', bound=db.Model)
