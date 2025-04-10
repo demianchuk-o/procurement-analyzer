@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, ForeignKey, Text, DateTime, String, JSON
-from sqlalchemy.orm import relationship
 
 from db import db
 
@@ -26,14 +25,12 @@ class Complaint(db.Model):
 class ComplaintChange(db.Model):
     __tablename__ = 'complaint_changes'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     complaint_id = Column(String(32), ForeignKey('complaints.id'), nullable=False)
-    tender_id = Column(String(32), ForeignKey('tenders.id'), nullable=False)
     change_date = Column(DateTime(timezone=True), nullable=False)
     field_name = Column(String(50), nullable=False)
     old_value = Column(String)
     new_value = Column(String)
-    change_type = Column(String(50), nullable=False)
 
     #Relationships
     complaint = db.relationship("Complaint", back_populates="changes")

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric, Text, Integer
+from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric, Integer
 
 from db import db
 
@@ -11,25 +11,27 @@ class Bid(db.Model):
     date = Column(DateTime)
     status = Column(String(50))
     value_amount = Column(Numeric(18, 2))
-    value_currency = Column(String(10))
 
+    # tenderer data
+    tenderer_id = Column(String)
+    tenderer_legal_name = Column(String)
 
     # Relationships
+    changes = db.relationship("BidChange", back_populates="bid",
+                              order_by="BidChange.change_date",
+                              cascade="all, delete-orphan")
     tender = db.relationship("Tender", back_populates="bids")
 
 
 class BidChange(db.Model):
     __tablename__ = 'bid_changes'
 
-    id = Column(Integer, primary_key=True)
-    bid_id = Column(String(32), ForeignKey('bids.id'), nullable=False) #FK на Bid
-    tender_id = Column(String(32), ForeignKey('tenders.id'), nullable=False) #FK на Tender
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    bid_id = Column(String(32), ForeignKey('bids.id'), nullable=False)
     change_date = Column(DateTime(timezone=True), nullable=False)
     field_name = Column(String(50), nullable=False)
     old_value = Column(String)
     new_value = Column(String)
-    change_type = Column(String(50), nullable=False)
-
 
     # Relationships
     bid = db.relationship("Bid", back_populates="changes")
