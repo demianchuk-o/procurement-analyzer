@@ -18,3 +18,9 @@ class BaseRepository(ABC, Generic[T]):
 
     def flush(self) -> None:
         self._session.flush()
+
+    def commit(self) -> None:
+        self._session.commit()
+
+    def rollback(self) -> None:
+        self._session.rollback()
