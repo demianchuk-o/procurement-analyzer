@@ -8,8 +8,8 @@ import json
 from celery import shared_task
 
 from db import db
-from models.complaints import Complaint
-from models.violation_scores import ViolationScore
+from models import Complaint
+from models import ViolationScore
 from repositories.tender_repository import TenderRepository
 from repositories.violation_score_repository import ViolationScoreRepository
 
