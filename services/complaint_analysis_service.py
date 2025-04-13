@@ -1,7 +1,5 @@
 import logging
 from collections import Counter
-
-import spacy
 from typing import List, Dict
 import json
 
@@ -61,20 +59,22 @@ class ComplaintAnalysisService:
             return json.load(file)
 
     def analyze_complaint_text(self, complaint_text: str) -> List[Dict]:
-        """Analyzes complaint text and returns highlighted keywords."""
-        doc = nlp(complaint_text)
-        lemmatized_tokens = [token.lemma_.lower() for token in doc]
+        """Analyzes complaint text using stemming and returns highlighted keywords."""
+        tokenized_complaint = word_tokenize(complaint_text.lower())
+        stemmed_tokens = [self.stemmer.stem(token) for token in tokenized_complaint]
         highlighted = []
-        for domain, keywords in self.violation_keywords.items():
+        for domain, keywords in self.stemmed_keywords.items():
             for keyword in keywords:
-                if keyword.lower() in lemmatized_tokens:
-                    start = complaint_text.lower().find(keyword.lower())
+                if keyword in stemmed_tokens:
+                    index = stemmed_tokens.index(keyword)
+                    original_token = tokenized_complaint[index]
+                    start = complaint_text.lower().find(original_token)
                     if start != -1:
                         highlighted.append({
-                            "Keyword": keyword,
+                            "Keyword": original_token,
                             "Domain": domain,
                             "StartPosition": start,
-                            "Length": len(keyword)
+                            "Length": len(original_token)
                         })
         return highlighted
 
