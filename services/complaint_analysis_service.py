@@ -6,6 +6,10 @@ from typing import List, Dict
 import json
 
 from celery import shared_task
+from nltk.stem import SnowballStemmer
+from nltk.tokenize import word_tokenize
+
+stemmer = SnowballStemmer("russian")
 
 from db import db
 from models import Complaint
