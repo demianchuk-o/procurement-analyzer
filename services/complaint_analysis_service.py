@@ -1,4 +1,3 @@
-# services/complaint_analysis_service.py
 import logging
 from collections import Counter
 
@@ -66,7 +65,7 @@ class ComplaintAnalysisService:
                         })
         return highlighted
 
-    def update_violation_scores(self, tender_id: str, complaints: List[Complaint]) -> ViolationScore:
+    def update_violation_scores(self, tender_id: str, complaint: Complaint) -> ViolationScore:
         """Updates violation scores based on complaint analysis."""
         scores = {
             "discriminatory_requirements_score": 0,
@@ -76,28 +75,27 @@ class ComplaintAnalysisService:
             "technical_specification_issues_score": 0
         }
 
-        for complaint in complaints:
-            if complaint.description:
-                highlighted_keywords = self.analyze_complaint_text(complaint.description)
-                complaint.highlighted_keywords = highlighted_keywords
+        if complaint.description:
+            highlighted_keywords = self.analyze_complaint_text(complaint.description)
+            complaint.highlighted_keywords = highlighted_keywords
 
-                domain_counts = Counter(item["Domain"] for item in highlighted_keywords)
-                most_frequent_domain = domain_counts.most_common(1)
+            domain_counts = Counter(item["Domain"] for item in highlighted_keywords)
+            most_frequent_domain = domain_counts.most_common(1)
 
-                if most_frequent_domain:
-                    most_frequent_domain = most_frequent_domain[0][0]
-                    if most_frequent_domain == "discriminatory_requirements":
-                        scores["discriminatory_requirements_score"] += 1
-                    elif most_frequent_domain == "unjustified_high_price":
-                        scores["unjustified_high_price_score"] += 1
-                    elif most_frequent_domain == "tender_documentation_issues":
-                        scores["tender_documentation_issues_score"] += 1
-                    elif most_frequent_domain == "procedural_violations":
-                        scores["procedural_violations_score"] += 1
-                    elif most_frequent_domain == "technical_specification_issues":
-                        scores["technical_specification_issues_score"] += 1
+            if most_frequent_domain:
+                most_frequent_domain = most_frequent_domain[0][0]
+                if most_frequent_domain == "discriminatory_requirements":
+                    scores["discriminatory_requirements_score"] += 1
+                elif most_frequent_domain == "unjustified_high_price":
+                    scores["unjustified_high_price_score"] += 1
+                elif most_frequent_domain == "tender_documentation_issues":
+                    scores["tender_documentation_issues_score"] += 1
+                elif most_frequent_domain == "procedural_violations":
+                    scores["procedural_violations_score"] += 1
+                elif most_frequent_domain == "technical_specification_issues":
+                    scores["technical_specification_issues_score"] += 1
 
-        # Fetch existing or create new ViolationScore
+
         existing_score = self.violation_score_repo.get_by_tender_id(tender_id)
         if existing_score:
             existing_score.discriminatory_requirements_score = scores["discriminatory_requirements_score"]
