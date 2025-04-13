@@ -28,7 +28,7 @@ def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
         complaint_analysis_service = ComplaintAnalysisService(violation_score_repo)
 
         complaint = tender_repo.get_complaint_by_id(complaint_id)
-        complaint_analysis_service.update_violation_scores(tender_id, [complaint])
+        complaint_analysis_service.update_violation_scores(tender_id, complaint)
     except Exception as exc:
         logger.error(f"Error analyzing complaint {complaint_id} for tender {tender_id}: {exc}", exc_info=True)
         raise
