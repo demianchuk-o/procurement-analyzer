@@ -17,7 +17,6 @@ from models import ViolationScore
 from repositories.tender_repository import TenderRepository
 from repositories.violation_score_repository import ViolationScoreRepository
 
-nlp = spacy.load("uk_core_news_md")
 
 @shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
 def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
