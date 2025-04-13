@@ -43,7 +43,17 @@ class ComplaintAnalysisService:
                  keywords_path: str = '../util/keywords.json'):
         self.violation_score_repo = violation_score_repo
         self.logger = logging.getLogger(type(self).__name__)
-        self.violation_keywords = self._load_keywords(keywords_path)
+        self.stemmer = stemmer
+        self.stemmed_keywords = self._load_and_stem_keywords(keywords_path)
+        self.original_keywords = self._load_keywords(keywords_path)
+
+    def _load_and_stem_keywords(self, keywords_path: str) -> Dict:
+        """Loads keywords from a JSON file and stems them."""
+        keywords = self._load_keywords(keywords_path)
+        stemmed_keywords = {}
+        for domain, words in keywords.items():
+            stemmed_keywords[domain] = [self.stemmer.stem(word.lower()) for word in words]
+        return stemmed_keywords
 
     def _load_keywords(self, keywords_path: str) -> Dict:
         """Loads keywords from a JSON file."""
