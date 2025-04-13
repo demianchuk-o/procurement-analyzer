@@ -96,16 +96,16 @@ class ComplaintAnalysisService:
             most_frequent_domain = domain_counts.most_common(1)
 
             if most_frequent_domain:
-                most_frequent_domain = most_frequent_domain[0][0]
-                if most_frequent_domain == "discriminatory_requirements":
+                most_frequent_domain_name = most_frequent_domain[0][0]
+                if most_frequent_domain_name == "discriminatory_requirements":
                     scores["discriminatory_requirements_score"] += 1
-                elif most_frequent_domain == "unjustified_high_price":
+                elif most_frequent_domain_name == "unjustified_high_price":
                     scores["unjustified_high_price_score"] += 1
-                elif most_frequent_domain == "tender_documentation_issues":
+                elif most_frequent_domain_name == "tender_documentation_issues":
                     scores["tender_documentation_issues_score"] += 1
-                elif most_frequent_domain == "procedural_violations":
+                elif most_frequent_domain_name == "procedural_violations":
                     scores["procedural_violations_score"] += 1
-                elif most_frequent_domain == "technical_specification_issues":
+                elif most_frequent_domain_name == "technical_specification_issues":
                     scores["technical_specification_issues_score"] += 1
 
 
