@@ -19,15 +19,8 @@ class ViolationScoreRepository(BaseRepository[ViolationScore]):
         """Get ViolationScore by tender_id."""
         return self._session.query(ViolationScore).filter_by(tender_id=tender_id).first()
 
-    def create(self, violation_score: ViolationScore) -> ViolationScore:
-        """Create a new ViolationScore."""
+    def create(self, violation_score: ViolationScore) -> None:
+        """Create a new ViolationScore, flush and commit the session."""
         self._session.add(violation_score)
         self._session.flush()
         self._session.commit()
-        return violation_score
-
-    def update(self, violation_score: ViolationScore) -> ViolationScore:
-        """Update an existing ViolationScore."""
-        self._session.flush()
-        self._session.commit()
-        return violation_score

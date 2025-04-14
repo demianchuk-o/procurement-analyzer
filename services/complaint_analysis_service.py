@@ -43,7 +43,6 @@ class ComplaintAnalysisService:
         self.logger = logging.getLogger(type(self).__name__)
         self.stemmer = stemmer
         self.stemmed_keywords = self._load_and_stem_keywords(keywords_path)
-        self.original_keywords = self._load_keywords(keywords_path)
 
     def _load_and_stem_keywords(self, keywords_path: str) -> Dict:
         """Loads keywords from a JSON file and stems them."""
@@ -116,9 +115,12 @@ class ComplaintAnalysisService:
             existing_score.tender_documentation_issues_score = scores["tender_documentation_issues_score"]
             existing_score.procedural_violations_score = scores["procedural_violations_score"]
             existing_score.technical_specification_issues_score = scores["technical_specification_issues_score"]
-            updated_score = self.violation_score_repo.update(existing_score)
+
+            self.violation_score_repo.flush()
+            self.violation_score_repo.commit()
+
             self.logger.info(f"Updated violation scores for tender {tender_id}")
-            return updated_score
+            return existing_score
         else:
             new_score = ViolationScore(
                 tender_id=tender_id,
@@ -128,6 +130,7 @@ class ComplaintAnalysisService:
                 procedural_violations_score=scores["procedural_violations_score"],
                 technical_specification_issues_score=scores["technical_specification_issues_score"]
             )
-            created_score = self.violation_score_repo.create(new_score)
+            self.violation_score_repo.create(new_score)
+
             self.logger.info(f"Created violation scores for tender {tender_id}")
-            return created_score
+            return new_score
