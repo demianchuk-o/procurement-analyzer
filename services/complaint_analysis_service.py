@@ -49,7 +49,7 @@ class ComplaintAnalysisService:
         keywords = self._load_keywords(keywords_path)
         stemmed_keywords = {}
         for domain, words in keywords.items():
-            stemmed_keywords[domain] = [self.stemmer.stem(word.lower()) for word in words]
+            stemmed_keywords[domain] = list(set(self.stemmer.stem(word.lower()) for word in words))
         return stemmed_keywords
 
     def _load_keywords(self, keywords_path: str) -> Dict:
