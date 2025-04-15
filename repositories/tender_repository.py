@@ -2,7 +2,7 @@ from typing import Optional, List
 
 from sqlalchemy.orm import Session, selectinload
 
-from models import Tender, GeneralClassifier, UserSubscription
+from models import Tender, GeneralClassifier, UserSubscription, Complaint
 from models.typing import EntityT, ChangeT
 from repositories.base_repository import BaseRepository
 
@@ -57,3 +57,9 @@ class TenderRepository(BaseRepository[Tender]):
             .distinct()
             .all()
         ]
+
+    def get_complaint_by_id(self, complaint_id: str) -> Optional[Complaint]:
+        """
+        Fetches a tender by its complaint ID.
+        """
+        return self._session.query(Complaint).filter(Complaint.id == complaint_id).first()

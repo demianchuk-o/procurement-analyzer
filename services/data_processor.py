@@ -14,6 +14,7 @@ from schemas.complaint_schema import ComplaintSchema
 from schemas.tender_document_schema import TenderDocumentSchema
 from schemas.tender_schema import TenderSchema
 
+from services.complaint_analysis_service import analyze_complaint_and_update_score
 
 class DataProcessor:
     def __init__(self, tender_repo: TenderRepository) -> None:
@@ -173,6 +174,13 @@ class DataProcessor:
                 # Create new
                 self.logger.info(f"Creating new {model_cls.__name__} {entity_id} for tender {tender_id}")
                 self.tender_repo.add_entity(new_obj)
+
+                if model_cls == Complaint:
+                    analyze_complaint_and_update_score.delay(
+                        complaint_id=new_obj.id,
+                        tender_id=tender_id,
+                        description=new_obj.description
+                    )
 
         self.tender_repo.flush()
 
