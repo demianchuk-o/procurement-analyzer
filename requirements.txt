@@ -8,3 +8,4 @@ marshmallow~=3.26.1
 alembic~=1.15.1
 spacy~=3.8.5
 celery~=5.5.1
+nltk~=3.9.1
