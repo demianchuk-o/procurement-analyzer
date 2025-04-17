@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  test:
+    build: .
+    command: pytest -v tests/integration
+    depends_on:
+      web:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/test_tenderdb
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONPATH=.
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/test_tenderdb
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+  db:
+    extends:
+      file: docker-compose.yml
+      service: db
+    environment:
+      POSTGRES_DB: test_tenderdb
+
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
+
+  celery:
+    build: .
+    command: celery -A celery_app worker --loglevel=INFO
+    depends_on:
+      web:
+        condition: service_started
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/test_tenderdb
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
