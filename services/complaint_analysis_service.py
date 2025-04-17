@@ -1,12 +1,15 @@
+import json
 import logging
+import os
 from collections import Counter
 from typing import List, Dict
-import json
 
+import nltk
 from celery import shared_task
 from nltk.stem import SnowballStemmer
 from nltk.tokenize import word_tokenize
 
+nltk.download('punkt_tab')
 stemmer = SnowballStemmer("russian")
 
 from db import db
