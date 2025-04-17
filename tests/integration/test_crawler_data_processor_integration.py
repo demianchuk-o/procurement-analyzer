@@ -87,7 +87,9 @@ class TestCrawlerDataProcessorIntegration:
         celery_app.conf.task_eager_propagate = True
 
     def test_crawler_data_processor_integration_new_tender(self, crawler_service, tender_repository, db_session):
-        """Test the integration of crawler and data processor for a new tender."""
+        """Test the integration of crawler and data processor for a new tender.
+        Ensures that the new tender is created and
+        that the general classifier is set correctly."""
         # Arrange
         tender_ocid = "ocid-integration-new"
         tender_uuid = "tender-uuid-integration-new"
@@ -127,7 +129,8 @@ class TestCrawlerDataProcessorIntegration:
     def test_crawler_data_processor_integration_complaint_analysis(self, crawler_service, tender_repository,
                                                                    violation_score_repository,
                                                                    complaint_analysis_service, db_session):
-        """Test the integration including complaint analysis."""
+        """Test the integration including complaint analysis.
+        Ensures that the new complaint is created and processed correctly."""
         # Arrange
         tender_ocid = "ocid-integration-compl"
         tender_uuid = "tender-uuid-integration-compl"
