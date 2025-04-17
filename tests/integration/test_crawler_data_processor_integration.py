@@ -167,7 +167,7 @@ class TestCrawlerDataProcessorIntegration:
         # violation score is updated
         violation_score = violation_score_repository.get_by_tender_id(tender_uuid)
         assert violation_score is not None
-        assert violation_score.procedural_violations_score == 1
+        assert violation_score.discriminatory_requirements_score == 1
 
         # highlighted keywords
         assert complaint.highlighted_keywords is not None
