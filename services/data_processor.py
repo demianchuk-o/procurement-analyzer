@@ -178,8 +178,7 @@ class DataProcessor:
                 if model_cls == Complaint:
                     analyze_complaint_and_update_score.delay(
                         complaint_id=new_obj.id,
-                        tender_id=tender_id,
-                        description=new_obj.description
+                        tender_id=tender_id
                     )
 
         self.tender_repo.flush()
