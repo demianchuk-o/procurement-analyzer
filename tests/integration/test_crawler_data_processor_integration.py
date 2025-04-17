@@ -119,6 +119,11 @@ class TestCrawlerDataProcessorIntegration:
         assert tender.title == 'Integration Test Tender'
         assert tender.ocid == tender_ocid
 
+        # general classifier creation
+        assert tender.general_classifier is not None
+        assert tender.general_classifier.scheme == 'ДК-021'
+        assert tender.general_classifier.description == 'Роботи'
+
     def test_crawler_data_processor_integration_complaint_analysis(self, crawler_service, tender_repository,
                                                                    violation_score_repository,
                                                                    complaint_analysis_service, db_session):
