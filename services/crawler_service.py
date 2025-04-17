@@ -62,13 +62,11 @@ class CrawlerService:
              )
 
              if success:
-                  self.tender_repo.commit()
                   self.logger.info(f"Successfully synced tender UUID {tender_uuid}")
-                  return True
              else:
                   self.logger.error(f"DataProcessor failed for tender UUID {tender_uuid}")
-                  self.tender_repo.rollback()
-                  return False
+
+             return success
 
         except Exception as e:
              self.logger.error(f"Unexpected error syncing tender OCID {tender_ocid}: {e}", exc_info=True)
@@ -155,5 +153,6 @@ class CrawlerService:
             return classification.id
         else:
             new_classification = self.tender_repo.create_general_classifier(scheme=scheme, description=description)
+            self.tender_repo.commit()
             self.logger.info(f"Prepared new GeneralClassifier: ID {new_classification.id}, Scheme: {scheme}")
             return new_classification.id
