@@ -26,6 +26,7 @@ class DataProcessor:
         self.bid_schema = BidSchema()
         self.award_schema = AwardSchema()
         self.complaint_schema = ComplaintSchema()
+        self._new_complaint_ids: List[str] = []
 
     def _record_change(self,
                        change_model_cls: Type[ChangeT],
@@ -176,10 +177,7 @@ class DataProcessor:
                 self.tender_repo.add_entity(new_obj)
 
                 if model_cls == Complaint:
-                    analyze_complaint_and_update_score.delay(
-                        complaint_id=new_obj.id,
-                        tender_id=tender_id
-                    )
+                    self._new_complaint_ids.append(new_obj.id)
 
         self.tender_repo.flush()
 
@@ -316,10 +314,21 @@ class DataProcessor:
                 entity_fk_name='complaint_id'
             )
 
-            # Transaction commit is handled outside this method
+            self.tender_repo.commit()
+
+            new_complaint_ids = self._new_complaint_ids
+            self._new_complaint_ids = []  # Reset the list after commit
+
+            for complaint_id in new_complaint_ids:
+                analyze_complaint_and_update_score.delay(
+                    complaint_id=complaint_id,
+                    tender_id=tender_uuid
+                )
+
             self.logger.info(f"Successfully prepared changes for tender UUID {tender_uuid}")
             return True
 
         except Exception as e:
+            self.tender_repo.rollback()
             self.logger.error(f"Error during processing tender UUID {tender_uuid}: {e}", exc_info=True)
             return False
