@@ -144,7 +144,7 @@ class TestCrawlerDataProcessorIntegration:
                 {
                     "id": "complaint-1",
                     "date": "2025-01-03T10:00:00Z",
-                    "description": "Це скарга зі словом 'дискримінаційні'.",
+                    "description": "Це скарга зі словом дискримінаційний.",
                     "status": "pending",
                     "type": "complaint"
                 }
@@ -162,7 +162,7 @@ class TestCrawlerDataProcessorIntegration:
         assert tender is not None
         complaint = tender_repository.get_complaint_by_id("complaint-1")
         assert complaint is not None
-        assert complaint.description == "Це скарга зі словом 'дискримінаційні'."
+        assert complaint.description == "Це скарга зі словом дискримінаційний."
 
         # violation score is updated
         violation_score = violation_score_repository.get_by_tender_id(tender_uuid)
@@ -172,5 +172,5 @@ class TestCrawlerDataProcessorIntegration:
         # highlighted keywords
         assert complaint.highlighted_keywords is not None
         assert len(complaint.highlighted_keywords) > 0
-        assert complaint.highlighted_keywords[0]["Keyword"] == "дискримінаційні"
-        assert complaint.highlighted_keywords[0]["Domain"] == "procedural_violations"
+        assert complaint.highlighted_keywords[0]["Keyword"] == "дискримінаційний"
+        assert complaint.highlighted_keywords[0]["Domain"] == "discriminatory_requirements"
