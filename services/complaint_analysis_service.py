@@ -42,7 +42,9 @@ class ComplaintAnalysisService:
         self.violation_score_repo = violation_score_repo
         self.logger = logging.getLogger(type(self).__name__)
         self.stemmer = stemmer
-        self.stemmed_keywords = self._load_and_stem_keywords(keywords_path)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        full_keywords_path = os.path.join(script_dir, keywords_path)
+        self.stemmed_keywords = self._load_and_stem_keywords(full_keywords_path)
 
     def _load_and_stem_keywords(self, keywords_path: str) -> Dict:
         """Loads keywords from a JSON file and stems them."""
