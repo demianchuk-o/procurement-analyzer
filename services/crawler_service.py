@@ -41,7 +41,8 @@ class CrawlerService:
         try:
              existing_tender = self.tender_repo.get_by_id(tender_uuid)
 
-             if existing_tender and existing_tender.date_modified and existing_tender.date_modified >= date_modified_utc:
+             if (existing_tender and existing_tender.date_modified
+                     and existing_tender.date_modified.astimezone(timezone.utc) >= date_modified_utc):
                  self.logger.debug(f"Tender UUID {tender_uuid} (OCID {tender_ocid}) unchanged (DB date: {existing_tender.date_modified}, API date: {date_modified_utc}), skipping detailed fetch.")
                  return True
 
