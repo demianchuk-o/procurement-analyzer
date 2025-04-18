@@ -13,7 +13,7 @@ class ViolationScore(db.Model):
     tender_documentation_issues_score = Column(Numeric(5, 3))
     procedural_violations_score = Column(Numeric(5, 3))
     technical_specification_issues_score = Column(Numeric(5, 3))
-    date_calculated = Column(DateTime, default=db.func.now(), nullable=False)
+    date_calculated = Column(DateTime(timezone=True), default=db.func.now(), nullable=False)
 
     # Relationship
     tender = db.relationship("Tender", back_populates="violation_score")

@@ -11,9 +11,9 @@ class Complaint(db.Model):
     status = Column(String)
     title = Column(Text)
     description = Column(Text)
-    date = Column(DateTime)
-    date_submitted = Column(DateTime)
-    date_answered = Column(DateTime)
+    date = Column(DateTime(timezone=True))
+    date_submitted = Column(DateTime(timezone=True))
+    date_answered = Column(DateTime(timezone=True))
     type = Column(String(50), nullable=False)
     highlighted_keywords = Column(JSON)
 

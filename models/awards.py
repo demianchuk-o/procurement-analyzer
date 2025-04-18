@@ -13,11 +13,11 @@ class Award(db.Model):
     status = Column(String)
     title = Column(String)
     value_amount = Column(Numeric(18, 2))
-    award_date = Column(DateTime)
+    award_date = Column(DateTime(timezone=True))
 
     # periods
-    complaint_period_start_date = Column(DateTime)
-    complaint_period_end_date = Column(DateTime)
+    complaint_period_start_date = Column(DateTime(timezone=True))
+    complaint_period_end_date = Column(DateTime(timezone=True))
 
     # Relationships
     bid = relationship("Bid")

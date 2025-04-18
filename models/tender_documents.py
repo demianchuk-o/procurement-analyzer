@@ -13,8 +13,8 @@ class TenderDocument(db.Model):
     format = Column(String(50))
     url = Column(Text)
     hash = Column(Text)
-    date_published = Column(DateTime)
-    date_modified = Column(DateTime)
+    date_published = Column(DateTime(timezone=True))
+    date_modified = Column(DateTime(timezone=True))
 
     # Relationships
     tender = db.relationship("Tender", back_populates="documents")
