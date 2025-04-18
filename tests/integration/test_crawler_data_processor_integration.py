@@ -120,6 +120,7 @@ class TestCrawlerDataProcessorIntegration:
         assert tender is not None
         assert tender.title == 'Integration Test Tender'
         assert tender.ocid == tender_ocid
+        assert tender.value_amount == 50000
 
         # general classifier creation
         assert tender.general_classifier is not None
