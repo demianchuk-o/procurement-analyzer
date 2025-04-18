@@ -44,12 +44,23 @@ class DataProcessor:
             else:
                 change_date = change_date.astimezone(timezone.utc)
 
+            # format numeric values with two decimal places
+            if isinstance(old_value, (int, float)):
+                old_value_str = "{:.2f}".format(old_value)
+            else:
+                old_value_str = str(old_value) if old_value is not None else None
+
+            if isinstance(new_value, (int, float)):
+                new_value_str = "{:.2f}".format(new_value)
+            else:
+                new_value_str = str(new_value) if new_value is not None else None
+
             change_data = {
                 entity_fk_name: entity_fk_value,
                 "change_date": change_date,
                 "field_name": field_name,
-                "old_value": str(old_value) if old_value is not None else None,
-                "new_value": str(new_value) if new_value is not None else None,
+                "old_value": old_value_str,
+                "new_value": new_value_str,
             }
 
             change_record = change_model_cls(**change_data)
