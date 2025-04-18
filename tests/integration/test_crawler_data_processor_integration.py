@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from db import db
 from config import Config
-from models import Base, Tender, Complaint, ViolationScore
+from models import Base, Tender, Complaint, ViolationScore, GeneralClassifier
 from repositories.tender_repository import TenderRepository
 from repositories.violation_score_repository import ViolationScoreRepository
 from services.crawler_service import CrawlerService
@@ -126,6 +126,82 @@ class TestCrawlerDataProcessorIntegration:
         assert tender.general_classifier is not None
         assert tender.general_classifier.scheme == 'ДК-021'
         assert tender.general_classifier.description == 'Роботи'
+
+    def test_crawler_data_processor_integration_update_tender(self, crawler_service, tender_repository, db_session):
+        """Test updating an existing tender and verifies that changes are recorded."""
+        # Arrange
+        tender_ocid = "ocid-integration-updat"
+        tender_uuid = "tender-uuid-integration-update--"
+        date_created = datetime(2025, 1, 1, 8, 0, 0, tzinfo=timezone.utc)
+        date_modified_initial = datetime(2025, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+        date_modified_updated = datetime(2025, 1, 2, 12, 0, 0, tzinfo=timezone.utc)
+
+        initial_tender = Tender(
+            id=tender_uuid,
+            ocid=tender_ocid,
+            date_created=date_created,
+            date_modified=date_modified_initial,
+            title='Initial Tender Title',
+            value_amount=50000,
+            status='active'
+        )
+        db_session.add(initial_tender)
+        db_session.commit()
+
+        crawler_service.discovery_client.fetch_tender_bridge_info.return_value = {
+            'id': tender_uuid,
+            'dateModified': date_modified_updated,
+            'generalClassifier': {'scheme': 'ДК-021', 'description': 'Охорона'}
+        }
+        crawler_service.legacy_client.fetch_tender_details.return_value = {
+            'id': tender_uuid,
+            'date': date_created.isoformat(),
+            'dateModified': date_modified_updated.isoformat(),
+            'title': 'Updated Tender Title',
+            'value': {'amount': 75000.00},
+            'status': 'completed'
+        }
+
+        # Act
+        result = crawler_service.sync_single_tender(tender_ocid)
+
+        # Assert
+        assert result is True
+
+        # tender update
+        tender = tender_repository.get_by_id(tender_uuid)
+        assert tender is not None
+        assert tender.title == 'Updated Tender Title'
+        assert tender.value_amount == 75000
+        assert tender.status == 'completed'
+        assert tender.date_modified == date_modified_updated
+
+        # tender changes
+        changes = tender.changes
+        assert len(changes) >= 3  # title, value_amount, status, general_classifier
+
+        title_change = next((c for c in changes if c.field_name == 'title'), None)
+        assert title_change is not None
+        assert title_change.old_value == 'Initial Tender Title'
+        assert title_change.new_value == 'Updated Tender Title'
+
+        value_change = next((c for c in changes if c.field_name == 'value_amount'), None)
+        assert value_change is not None
+        assert value_change.old_value == '50000.00'
+        assert value_change.new_value == '75000.00'
+
+        status_change = next((c for c in changes if c.field_name == 'status'), None)
+        assert status_change is not None
+        assert status_change.old_value == 'active'
+        assert status_change.new_value == 'completed'
+
+        general_classifier_change = next((c for c in changes if c.field_name == 'general_classifier_id'), None)
+        assert general_classifier_change is not None
+
+        # general classifier update
+        assert tender.general_classifier is not None
+        assert tender.general_classifier.scheme == 'ДК-021'
+        assert tender.general_classifier.description == 'Охорона'
 
     def test_crawler_data_processor_integration_complaint_analysis(self, crawler_service, tender_repository,
                                                                    violation_score_repository,
