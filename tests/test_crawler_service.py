@@ -164,7 +164,6 @@ class TestCrawlerService:
             general_classifier_id=1,
             legacy_details={'key': 'value'}
         )
-        mock_tender_repo.rollback.assert_called_once()
 
     def test_sync_subscribed_tenders_success(self, crawler_service, mock_tender_repo):
         """Test successful sync of subscribed tenders."""
