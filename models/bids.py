@@ -8,7 +8,7 @@ class Bid(db.Model):
 
     id = Column(String(32), primary_key=True)
     tender_id = Column(String(32), ForeignKey('tenders.id'), nullable=False)
-    date = Column(DateTime)
+    date = Column(DateTime(timezone=True))
     status = Column(String(50))
     value_amount = Column(Numeric(18, 2))
 

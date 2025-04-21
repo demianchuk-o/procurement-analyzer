@@ -9,22 +9,22 @@ class Tender(db.Model):
     # core data
     id = Column(String(32), primary_key=True) # 32-char UUID
     ocid = Column(String(22), nullable=False)
-    date_created = Column(DateTime, nullable=False)
-    date_modified = Column(DateTime, nullable=False)
+    date_created = Column(DateTime(timezone=True), nullable=False)
+    date_modified = Column(DateTime(timezone=True), nullable=False)
     title = Column(Text, nullable=False)
     value_amount = Column(Numeric(18, 2))
     status = Column(String)
 
     # periods
-    enquiry_period_start_date = Column(DateTime)
-    enquiry_period_end_date = Column(DateTime)
-    tender_period_start_date = Column(DateTime)
-    tender_period_end_date = Column(DateTime)
-    auction_period_start_date = Column(DateTime)
-    auction_period_end_date = Column(DateTime)
-    award_period_start_date = Column(DateTime)
-    award_period_end_date = Column(DateTime)
-    notice_publication_date = Column(DateTime)
+    enquiry_period_start_date = Column(DateTime(timezone=True))
+    enquiry_period_end_date = Column(DateTime(timezone=True))
+    tender_period_start_date = Column(DateTime(timezone=True))
+    tender_period_end_date = Column(DateTime(timezone=True))
+    auction_period_start_date = Column(DateTime(timezone=True))
+    auction_period_end_date = Column(DateTime(timezone=True))
+    award_period_start_date = Column(DateTime(timezone=True))
+    award_period_end_date = Column(DateTime(timezone=True))
+    notice_publication_date = Column(DateTime(timezone=True))
 
     # classifier
     general_classifier_id = Column(Integer, ForeignKey('general_classifiers.id'))

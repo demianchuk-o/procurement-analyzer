@@ -251,8 +251,8 @@ class TestDataProcessor:
         assert len(bid_changes_added) == 1
         value_change = bid_changes_added[0]
         assert value_change.field_name == 'value_amount'
-        assert value_change.old_value == "950.0" # Check string representation
-        assert value_change.new_value == "980.0"
+        assert value_change.old_value == "950.00" # Check string representation
+        assert value_change.new_value == "980.00"
         assert value_change.bid_id == "bid-uuid-existing-1"
         assert value_change.change_date == date_modified_api
 

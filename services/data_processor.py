@@ -26,6 +26,7 @@ class DataProcessor:
         self.bid_schema = BidSchema()
         self.award_schema = AwardSchema()
         self.complaint_schema = ComplaintSchema()
+        self._new_complaint_ids: List[str] = []
 
     def _record_change(self,
                        change_model_cls: Type[ChangeT],
@@ -43,12 +44,23 @@ class DataProcessor:
             else:
                 change_date = change_date.astimezone(timezone.utc)
 
+            # format numeric values with two decimal places
+            if isinstance(old_value, (int, float)):
+                old_value_str = "{:.2f}".format(old_value)
+            else:
+                old_value_str = str(old_value) if old_value is not None else None
+
+            if isinstance(new_value, (int, float)):
+                new_value_str = "{:.2f}".format(new_value)
+            else:
+                new_value_str = str(new_value) if new_value is not None else None
+
             change_data = {
                 entity_fk_name: entity_fk_value,
                 "change_date": change_date,
                 "field_name": field_name,
-                "old_value": str(old_value) if old_value is not None else None,
-                "new_value": str(new_value) if new_value is not None else None,
+                "old_value": old_value_str,
+                "new_value": new_value_str,
             }
 
             change_record = change_model_cls(**change_data)
@@ -176,11 +188,7 @@ class DataProcessor:
                 self.tender_repo.add_entity(new_obj)
 
                 if model_cls == Complaint:
-                    analyze_complaint_and_update_score.delay(
-                        complaint_id=new_obj.id,
-                        tender_id=tender_id,
-                        description=new_obj.description
-                    )
+                    self._new_complaint_ids.append(new_obj.id)
 
         self.tender_repo.flush()
 
@@ -317,10 +325,21 @@ class DataProcessor:
                 entity_fk_name='complaint_id'
             )
 
-            # Transaction commit is handled outside this method
+            self.tender_repo.commit()
+
+            new_complaint_ids = self._new_complaint_ids
+            self._new_complaint_ids = []  # Reset the list after commit
+
+            for complaint_id in new_complaint_ids:
+                analyze_complaint_and_update_score.delay(
+                    complaint_id=complaint_id,
+                    tender_id=tender_uuid
+                )
+
             self.logger.info(f"Successfully prepared changes for tender UUID {tender_uuid}")
             return True
 
         except Exception as e:
+            self.tender_repo.rollback()
             self.logger.error(f"Error during processing tender UUID {tender_uuid}: {e}", exc_info=True)
             return False
