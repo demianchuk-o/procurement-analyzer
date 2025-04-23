@@ -23,3 +23,6 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self._password_hash, password)
+
+    # Relationships
+    subscriptions = db.relationship("UserSubscription", back_populates="user", cascade="all, delete-orphan")
