@@ -9,7 +9,7 @@ class User(db.Model):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String(255), unique=True, nullable=False)
+    email_hash = Column(String, unique=True, nullable=False)
     _password_hash = Column(String(255), nullable=False)
 
     # Properties
