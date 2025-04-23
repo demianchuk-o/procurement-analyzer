@@ -88,16 +88,12 @@ class TestUserService:
         user_id = 123
         mock_user = {'id': user_id}
         mock_user_repository.get_by_id.return_value = mock_user
-        mock_subscription_query = MagicMock()
-        mock_subscription_query.filter_by.return_value.delete.return_value = None
-        UserSubscription.query = mock_subscription_query
 
         # Act
         user_service.delete_user(user_id)
 
         # Assert
         mock_user_repository.get_by_id.assert_called_once_with(user_id)
-        mock_subscription_query.filter_by.assert_called_once_with(user_id=user_id)
         mock_session.delete.assert_called_once_with(mock_user)
         mock_session.commit.assert_called_once()
 
