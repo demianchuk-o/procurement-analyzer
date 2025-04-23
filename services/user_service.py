@@ -37,10 +37,6 @@ class UserService:
         if not user:
             raise ValueError("User not found")
 
-        # Delete user subscriptions
-        UserSubscription.query.filter_by(user_id=user_id).delete()
-
-        # Delete the user
         self.session.delete(user)
         self.session.commit()
 
