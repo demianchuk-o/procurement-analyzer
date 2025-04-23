@@ -29,7 +29,7 @@ class TestUserService:
         password = "password123"
         email_hash = hashlib.sha256(email.encode()).hexdigest()
         mock_user_repository.get_by_email.return_value = None
-        mock_user = MagicMock(email=email_hash)
+        mock_user = MagicMock(email_hash=email_hash)
         mock_user_repository.add.return_value = mock_user
 
         # Act
@@ -38,7 +38,7 @@ class TestUserService:
         # Assert
         mock_user_repository.get_by_email.assert_called_once_with(email_hash)
         mock_user_repository.add.assert_called_once()
-        assert user.email == email_hash
+        assert user.email_hash == email_hash
         mock_session.commit.assert_called_once()
 
     def test_register_user_duplicate_email(self, user_service, mock_user_repository):
@@ -47,7 +47,7 @@ class TestUserService:
         email = "test@example.com"
         password = "password123"
         email_hash = hashlib.sha256(email.encode()).hexdigest()
-        mock_user_repository.get_by_email.return_value = {'email': email_hash}
+        mock_user_repository.get_by_email.return_value = {'email_hash': email_hash}
 
         # Act & Assert
         with pytest.raises(ValueError) as excinfo:

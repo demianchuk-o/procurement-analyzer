@@ -16,7 +16,7 @@ class UserRepository(BaseRepository[User]):
 
     def get_by_email(self, email_hash: str) -> Optional[User]:
         """Gets a user by their hashed email."""
-        return self._session.query(User).filter(User.email == email_hash).first()
+        return self._session.query(User).filter(User.email_hash == email_hash).first()
 
     def hash_email(self, email: str) -> str:
         """Hashes the email using SHA-256."""

@@ -18,7 +18,7 @@ class UserService:
         if existing_user:
             raise ValueError("User with this email already exists")
 
-        user = User(email=email_hash)
+        user = User(email_hash=email_hash)
         user.password_hash = password
         self.user_repository.add(user)
         self.session.commit()
