@@ -1,5 +1,3 @@
-import hashlib
-
 from sqlalchemy.orm import Session
 
 from models import User, UserSubscription
@@ -13,7 +11,7 @@ class UserService:
 
     def register_user(self, email: str, password: str) -> User:
         """Registers a new user, hashing the email and setting the password."""
-        email_hash = hashlib.sha256(email.encode()).hexdigest()
+        email_hash = self.user_repository.hash_email(email)
         existing_user = self.user_repository.get_by_email(email_hash)
         if existing_user:
             raise ValueError("User with this email already exists")
