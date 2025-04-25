@@ -12,5 +12,9 @@ class Config:
 
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-hard-to-guess-jwt-secret')
     JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES', 3600))
-    JWT_ISSUER = os.environ.get('JWT_ISSUER', None)
-    JWT_AUDIENCE = os.environ.get('JWT_AUDIENCE', None)
+
+    JWT_ENCODE_ISSUER = os.environ.get('JWT_ISSUER', None)
+    JWT_ENCODE_AUDIENCE = os.environ.get('JWT_AUDIENCE', None)
+
+    JWT_DECODE_ISSUER = os.environ.get('JWT_ISSUER', None)
+    JWT_DECODE_AUDIENCE = os.environ.get('JWT_AUDIENCE', None)
