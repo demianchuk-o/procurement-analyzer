@@ -1,26 +1,12 @@
-from sqlalchemy.orm import Session
-
-from models import User, UserSubscription
+from models import User
+from repositories.tender_repository import TenderRepository
 from repositories.user_repository import UserRepository
 
 
 class UserService:
-    def __init__(self, session: Session, user_repository: UserRepository):
-        self.session = session
+    def __init__(self, user_repository: UserRepository, tender_repository: TenderRepository):
         self.user_repository = user_repository
-
-    def register_user(self, email: str, password: str) -> User:
-        """Registers a new user, hashing the email and setting the password."""
-        email_hash = self.user_repository.hash_email(email)
-        existing_user = self.user_repository.get_by_email(email_hash)
-        if existing_user:
-            raise ValueError("User with this email already exists")
-
-        user = User(email_hash=email_hash)
-        user.password_hash = password
-        self.user_repository.add(user)
-        self.session.commit()
-        return user
+        self.tender_repository = tender_repository
 
     def get_user(self, user_id: int) -> User:
         """Retrieves a user by ID."""
@@ -29,24 +15,30 @@ class UserService:
             raise ValueError("User not found")
         return user
 
+    def get_tender(self, tender_id: str):
+        """Retrieves a tender by ID."""
+        tender = self.tender_repository.get_by_id(tender_id)
+        if not tender:
+            raise ValueError("Tender not found")
+        return tender
+
     def delete_user(self, user_id: int) -> None:
         """Deletes a user and their subscriptions."""
-        user = self.user_repository.get_by_id(user_id)
-        if not user:
-            raise ValueError("User not found")
-
-        self.session.delete(user)
-        self.session.commit()
+        user = self.get_user(user_id)
+        self.user_repository.delete_user(user.id)
 
     def subscribe_to_tender(self, user_id: int, tender_id: str) -> None:
         """Subscribes a user to a tender."""
-        user = self.user_repository.get_by_id(user_id)
-        if not user:
-            raise ValueError("User not found")
+        user = self.get_user(user_id)
 
-        subscription = UserSubscription(user_id=user_id, tender_id=tender_id)
-        self.session.add(subscription)
-        self.session.commit()
+        tender = self.get_tender(tender_id)
+
+        existing_subscription = self.user_repository.find_subscription(user_id, tender_id)
+
+        if existing_subscription:
+            raise ValueError("User is already subscribed to this tender")
+
+        self.user_repository.add_subscription(user_id, tender_id)
 
     def unsubscribe_from_tender(self, user_id: int, tender_id: str) -> None:
         """Unsubscribes a user from a tender."""
@@ -54,9 +46,10 @@ class UserService:
         if not user:
             raise ValueError("User not found")
 
-        subscription = UserSubscription.query.filter_by(user_id=user_id, tender_id=tender_id).first()
+        tender = self.get_tender(tender_id)
+
+        subscription = self.user_repository.find_subscription(user.id, tender.id)
         if not subscription:
             raise ValueError("Subscription not found")
 
-        self.session.delete(subscription)
-        self.session.commit()
+        self.user_repository.remove_subscription(user.id, tender.id)
