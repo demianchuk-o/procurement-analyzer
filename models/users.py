@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer
 from sqlalchemy.ext.hybrid import hybrid_property
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash
 
 from db import db
 
@@ -9,7 +9,7 @@ class User(db.Model):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String(255), unique=True, nullable=False)
+    email_hash = Column(String, unique=True, nullable=False)
     _password_hash = Column(String(255), nullable=False)
 
     # Properties
@@ -21,5 +21,5 @@ class User(db.Model):
     def password_hash(self, password):
         self._password_hash = generate_password_hash(password)
 
-    def check_password(self, password):
-        return check_password_hash(self._password_hash, password)
+    # Relationships
+    subscriptions = db.relationship("UserSubscription", back_populates="user", cascade="all, delete-orphan")

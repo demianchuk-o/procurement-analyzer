@@ -1,58 +1,19 @@
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
+import pytest
 from celery import Celery
-from flask import Flask
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
-from db import db
 from config import Config
-from models import Base, Tender, Complaint, ViolationScore, GeneralClassifier
-from repositories.tender_repository import TenderRepository
+from models import Tender
 from repositories.violation_score_repository import ViolationScoreRepository
+from services.complaint_analysis_service import ComplaintAnalysisService
 from services.crawler_service import CrawlerService
 from services.data_processor import DataProcessor
-from services.complaint_analysis_service import ComplaintAnalysisService
+from tests.integration.base_integration_test import BaseIntegrationTest
 
 
-class TestCrawlerDataProcessorIntegration:
-    @pytest.fixture(scope="session")
-    def app(self):
-        app = Flask(__name__)
-        app.config.from_object(Config)
-        db.init_app(app)
-        return app
-
-    @pytest.fixture(scope="session")
-    def engine(self, app):
-        """Create a SQLAlchemy engine for the test database."""
-        with app.app_context():
-            engine = create_engine(Config.SQLALCHEMY_DATABASE_URI)
-            Base.metadata.create_all(engine)
-            yield engine
-            Base.metadata.drop_all(engine)
-
-    @pytest.fixture(scope="session")
-    def Session(self, engine):
-        """Create a SQLAlchemy session factory."""
-        return sessionmaker(bind=engine)
-
-    @pytest.fixture
-    def db_session(self, Session, app):
-        """Provide a session for each test function."""
-        with app.app_context():
-            session = Session()
-            try:
-                yield session
-            finally:
-                session.close()
-
-    @pytest.fixture
-    def tender_repository(self, db_session):
-        return TenderRepository(db_session)
-
+class TestCrawlerDataProcessorIntegration(BaseIntegrationTest):
     @pytest.fixture
     def violation_score_repository(self, db_session):
         return ViolationScoreRepository(db_session)
