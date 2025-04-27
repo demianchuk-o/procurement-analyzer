@@ -27,6 +27,7 @@ class ComplaintChange(db.Model):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     complaint_id = Column(String(32), ForeignKey('complaints.id'), nullable=False)
+    tender_id = Column(String(32), ForeignKey('tenders.id'), nullable=False)
     change_date = Column(DateTime(timezone=True), nullable=False)
     field_name = Column(String(50), nullable=False)
     old_value = Column(String)
