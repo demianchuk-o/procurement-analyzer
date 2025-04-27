@@ -18,6 +18,7 @@ class TenderRepository(BaseRepository[Tender]):
     def get_tender_with_relations(self, tender_uuid: str) -> Optional[Tender]:
          """Gets a tender and eagerly loads its relations needed for processing."""
          return self._session.query(Tender).options(
+             selectinload(Tender.general_classifier),
              selectinload(Tender.bids),
              selectinload(Tender.awards),
              selectinload(Tender.documents),
