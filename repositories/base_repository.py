@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Optional, TypeVar, Generic, Any
+from typing import Optional, Generic, Any
 
 from sqlalchemy.orm import Session
 
-from db import db
+from models.typing import ModelT as T
 
-T = TypeVar('T', bound=db.Model)
 
 class BaseRepository(ABC, Generic[T]):
     def __init__(self, session: Session):
