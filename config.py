@@ -3,7 +3,23 @@ import os
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'your-hard-to-guess-secret-key')
 
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'postgresql://user:pass@localhost:5432/tenderdb')
+    MIGRATION_LOCAL = os.getenv('MIGRATION_LOCAL', 'false').lower() in ('1', 'true', 'yes')
+
+    DB_HOST = 'localhost' if MIGRATION_LOCAL else os.getenv('DB_HOST', 'db')
+    DB_PORT = os.getenv('DB_PORT_LOCAL', '5434') if MIGRATION_LOCAL else os.getenv('DB_PORT', '5432')
+
+    # always build this
+    _DEFAULT_URI = (
+        f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
+        f"@{DB_HOST}:{DB_PORT}/{os.getenv('DB_NAME')}"
+    )
+
+    # ignore DATABASE_URL when migrating locally
+    SQLALCHEMY_DATABASE_URI = (
+        _DEFAULT_URI if MIGRATION_LOCAL
+        else os.getenv('DATABASE_URL', _DEFAULT_URI)
+    )
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://redis:6379/0')
