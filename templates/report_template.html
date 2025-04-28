@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Tender Report</title>
+    <style>
+      body { font-family: sans-serif; line-height: 1.5; padding: 15px; }
+      h1, h2, h3, h4 { margin-top: 1.2em; margin-bottom: 0.5em; }
+      h1 { font-size: 1.8em; }
+      h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+      h3 { font-size: 1.3em; }
+      h4 { font-size: 1.1em; margin-top: 1em; }
+      ul { padding-left: 20px; margin-top: 0.5em; }
+      li { margin-bottom: 0.3em; }
+      p { margin: 0.5em 0; }
+      .entity-block { margin-bottom: 1em; padding-left: 10px; border-left: 2px solid #eee; }
+      .change-item { margin-left: 15px; }
+    </style>
+</head>
+<body>
+    <h1>Tender Information</h1>
+    <p>{{ tender_info | e }}</p>
+
+    <h2>Tender Changes</h2>
+    {% if tender_changes %}
+        <ul>
+            {% for change in tender_changes %}
+                <li>{{ format_entity_change(change, 'tenders') | e }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No tender changes.</p>
+    {% endif %}
+
+    <h2>New Entities</h2>
+    {% set has_new_entities = false %}
+    {% for entity_type, entities in new_entities.items() %}
+        {% if entities %}
+            {% set has_new_entities = true %}
+            <h3>New {{ entity_type.capitalize() | e }}</h3>
+            <ul>
+                {% for entity_info in entities %}
+                    <li>{{ entity_info | e }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endfor %}
+    {% if not has_new_entities %}
+         <p>No new entities.</p>
+    {% endif %}
+
+    <h2>Entity Changes</h2>
+    {% set has_entity_changes = false %}
+    {% for entity_type, changes_dict in entity_changes.items() %}
+         {% if changes_dict %}
+             {% set has_entity_changes = true %}
+             <h3>{{ entity_type.capitalize() | e }} Changes</h3>
+             {% for entity_id, change_data in changes_dict.items() %}
+                 <div class='entity-block'>
+                     <h4>Entity: {{ change_data.info | e }}</h4>
+                     {% if change_data.changes %}
+                         <ul>
+                             {% for change in change_data.changes %}
+                                 <li class='change-item'>{{ format_entity_change(change, entity_type) | e }}</li>
+                             {% endfor %}
+                         </ul>
+                     {% else %}
+                         <p>No changes recorded for this entity.</p>
+                     {% endif %}
+                 </div>
+             {% endfor %}
+         {% endif %}
+    {% endfor %}
+    {% if not has_entity_changes %}
+        <p>No entity changes.</p>
+    {% endif %}
+
+</body>
+</html>
