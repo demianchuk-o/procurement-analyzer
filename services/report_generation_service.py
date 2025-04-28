@@ -25,7 +25,7 @@ class ReportGenerationService:
         if not tender:
             raise ValueError(f"Tender with ID {tender_id} not found.")
 
-        tender_changes = self.change_repo.get_changes_since(Type[TenderChange], tender_id, since_date)
+        tender_changes = self.change_repo.get_changes_since(TenderChange, tender_id, since_date)
 
 
         bid_changes = self.change_repo.get_changes_since(BidChange, tender_id, since_date)
