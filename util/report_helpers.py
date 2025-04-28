@@ -1,8 +1,9 @@
 from typing import Any, Callable, Dict, Type
 
-
+from models.typing import ChangeT
 from models import Bid, Award, TenderDocument, Complaint, Tender
 
+from util.field_maps import get_field_map
 
 def format_currency(amount, currency="UAH"):
     if amount is None:
@@ -66,3 +67,16 @@ def get_entity_short_info(entity: Any) -> str:
 
     # Fallback if no specific formatter is found
     return f"Об'єкт ID: {getattr(entity, 'id', 'N/A')}"
+
+def format_entity_change(change: Dict, entity_type_name: str) -> str:
+    """
+    Formats a change object (dictionary) into a user-friendly string.
+    """
+    change_date = change.get('change_date', 'Unknown Date')
+    field = change.get('field_name', 'Unknown Field') # Access 'field_name'
+
+    field_map = get_field_map(entity_type_name)
+    field_name = field_map.get(field, field)  # Use field as default if not found
+    old_value = change.get('old_value', 'N/A') # Access 'old_value'
+    new_value = change.get('new_value', 'N/A') # Access 'new_value'
+    return f"[{change_date}] {field_name}:'{old_value}' -> '{new_value}'"
