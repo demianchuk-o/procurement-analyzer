@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from datetime import datetime
 from typing import Dict
 
@@ -53,10 +54,10 @@ class ReportGenerationService:
         complaint_map = {c.id: c for c in tender.complaints}
 
         # Group changes by entity type
-        bid_entity_changes = dict()
-        award_entity_changes = dict()
-        doc_entity_changes = dict()
-        complaint_entity_changes = dict()
+        bid_entity_changes = defaultdict(lambda: {"info": "", "changes": []})
+        award_entity_changes = defaultdict(lambda: {"info": "", "changes": []})
+        doc_entity_changes = defaultdict(lambda: {"info": "", "changes": []})
+        complaint_entity_changes = defaultdict(lambda: {"info": "", "changes": []})
 
         for change in bid_changes:
             if change.bid_id in bid_map:
