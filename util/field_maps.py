@@ -51,3 +51,23 @@ COMPLAINT_FIELD_MAP = {
     "date_answered": "Дата відповіді",
     "type": "Тип",
 }
+
+from typing import Dict
+
+
+def get_field_map(entity_type_name: str) -> Dict[str, str]:
+    """
+    Returns the field map for the given model class.
+    """
+    if entity_type_name == 'tenders':
+        return TENDER_FIELD_MAP
+    elif entity_type_name == 'bids':
+        return BID_FIELD_MAP
+    elif entity_type_name == 'awards':
+        return AWARD_FIELD_MAP
+    elif entity_type_name == 'documents':
+        return TENDER_DOCUMENT_FIELD_MAP
+    elif entity_type_name == 'complaints':
+        return COMPLAINT_FIELD_MAP
+    else:
+        raise ValueError(f"Unknown model class: {entity_type_name.__name__}")
