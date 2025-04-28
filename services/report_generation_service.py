@@ -43,9 +43,9 @@ class ReportGenerationService:
 
 
         new_bids = [b for b in tender.bids if hasattr(b, 'date') and b.date and b.date > since_date]
-        new_awards = [a for a in tender.awards if hasattr(a, 'date') and a.date and a.date > since_date]
-        new_documents = [d for d in tender.documents if hasattr(d, 'datePublished') and d.datePublished and d.datePublished > since_date]
-        new_complaints = [c for c in tender.complaints if hasattr(c, 'date') and c.date and c.date > since_date]
+        new_awards = [a for a in tender.awards if hasattr(a, 'award_date') and a.award_date and a.award_date > since_date]
+        new_documents = [d for d in tender.documents if hasattr(d, 'date_published') and d.date_published and d.date_published > since_date]
+        new_complaints = [c for c in tender.complaints if hasattr(c, 'date_submitted') and c.date_submitted and c.date_submitted > since_date]
 
 
         bid_map = {b.id: b for b in tender.bids}
