@@ -1,8 +1,11 @@
-from typing import Optional, List
+from collections import defaultdict
+from datetime import datetime
+from typing import Optional, List, Dict
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from models import Tender, GeneralClassifier, UserSubscription, Complaint
+from models import Tender, GeneralClassifier, UserSubscription, Complaint, User
 from models.typing import EntityT, ChangeT
 from repositories.base_repository import BaseRepository
 
@@ -64,3 +67,29 @@ class TenderRepository(BaseRepository[Tender]):
         Fetches a tender by its complaint ID.
         """
         return self._session.query(Complaint).filter(Complaint.id == complaint_id).first()
+
+    def get_modified_tenders_and_subscribed_users(self, since_date: datetime) -> Dict[str, List[str]]:
+        """
+        Fetches IDs of tenders modified since a given date and the emails
+        of users subscribed to them.
+
+        Returns:
+            A dictionary mapping tender_id to a list of subscribed user emails.
+            e.g., {'tender-id-1': ['user1@example.com', 'user2@example.com']}
+        """
+        stmt = (
+            select(Tender.id, User.email_hash)
+            .join(UserSubscription, Tender.id == UserSubscription.tender_id)
+            .join(User, UserSubscription.user_id == User.id)
+            .where(Tender.date_modified > since_date)
+            .order_by(Tender.id)
+        )
+
+        results = self._session.execute(stmt).all()
+
+        tender_user_map = defaultdict(list)
+        for tender_id, user_email in results:
+            if user_email:
+                tender_user_map[tender_id].append(user_email)
+
+        return dict(tender_user_map)
