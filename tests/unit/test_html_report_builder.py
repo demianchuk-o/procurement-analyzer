@@ -4,6 +4,7 @@ from services.html_report_builder import HtmlReportBuilder
 from util.field_maps import get_field_map
 
 value_amount_localized = get_field_map('tenders')['value_amount']
+title_localized = get_field_map('tenders')['title']
 
 class TestHtmlReportBuilder:
 
@@ -43,7 +44,7 @@ class TestHtmlReportBuilder:
         assert "<p>Tender ID: tender-123, Title: Test Tender</p>" in html_report
         assert "<h2>Tender Changes</h2>" in html_report
         assert "<li>" in html_report
-        assert "title" in html_report
+        assert title_localized in html_report
 
 
         assert value_amount_localized in html_report
