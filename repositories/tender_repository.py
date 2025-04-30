@@ -18,6 +18,10 @@ class TenderRepository(BaseRepository[Tender]):
     def get_by_id(self, id: str) -> Optional[Tender]:
         return self._session.get(Tender, id)
 
+    def exists_by_id(self, id: str) -> bool:
+        """Checks if a tender exists by its ID."""
+        return self._session.query(Tender).filter(Tender.id == id).count() > 0
+
     def get_tender_with_relations(self, tender_uuid: str) -> Optional[Tender]:
          """Gets a tender and eagerly loads its relations needed for processing."""
          return self._session.query(Tender).options(

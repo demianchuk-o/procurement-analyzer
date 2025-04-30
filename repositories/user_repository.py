@@ -14,6 +14,10 @@ class UserRepository(BaseRepository[User]):
     def get_by_id(self, id: int) -> Optional[User]:
         return self._session.get(User, id)
 
+    def exists_by_id(self, id: int) -> bool:
+        """Checks if a user exists by their ID."""
+        return self._session.query(User).filter(User.id == id).count() > 0
+
     def get_by_email(self, email: str) -> Optional[User]:
         """Gets a user by their hashed email."""
         return self._session.query(User).filter(User.email == email).first()
