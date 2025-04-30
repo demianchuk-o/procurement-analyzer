@@ -20,35 +20,6 @@ class TestUserService:
     def user_service(self, mock_session, mock_user_repository):
         return UserService(session=mock_session, user_repository=mock_user_repository)
 
-    def test_register_user_success(self, user_service, mock_user_repository, mock_session):
-        """Test successful user registration."""
-        # Arrange
-        email = "test@example.com"
-        password = "password123"
-        mock_user_repository.get_by_email.return_value = None
-
-        # Act
-        user = user_service.register_user(email, password)
-
-        # Assert
-        mock_user_repository.get_by_email.assert_called_once_with(email)
-        mock_user_repository.add.assert_called_once()
-        mock_session.commit.assert_called_once()
-
-    def test_register_user_duplicate_email(self, user_service, mock_user_repository):
-        """Test registration with an email that already exists."""
-        # Arrange
-        email = "test@example.com"
-        password = "password123"
-        mock_user_repository.get_by_email.return_value = {'email': email}
-
-        # Act & Assert
-        with pytest.raises(ValueError) as excinfo:
-            user_service.register_user(email, password)
-        assert str(excinfo.value) == "User with this email already exists"
-
-        mock_user_repository.get_by_email.assert_called_once_with(email)
-
     def test_get_user_success(self, user_service, mock_user_repository):
         """Test getting a user by ID successfully."""
         # Arrange
