@@ -31,6 +31,11 @@ class EmailService:
             with smtplib.SMTP(self.smtp_server, self.port) as server:
                 if self.use_tls:
                     server.starttls(context=self.context)
+
+                if not self.sender_email or not self.password:
+                    logger.error("SMTP credentials are not set.")
+                    return False
+
                 server.login(self.sender_email, self.password)
                 server.sendmail(self.sender_email, recipient_email, message.as_string())
             logger.info(f"Email sent successfully to {recipient_email}")
