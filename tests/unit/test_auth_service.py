@@ -7,7 +7,7 @@ from repositories.user_repository import UserRepository
 
 class MockUser:
     def __init__(self, email, password):
-        self.email_hash = email
+        self.email = email
         self._password_hash = password
 
     @property
@@ -52,10 +52,8 @@ class TestAuthService:
     def test_login_success(self, app, auth_service, mock_user_repository, mock_user):
         """Test successful login."""
         # Arrange
-        email = mock_user.email_hash
+        email = mock_user.email
         password = mock_user._password_hash
-        email_hash = "hashed_email"
-        mock_user_repository.hash_email.return_value = email_hash
         mock_user_repository.get_by_email.return_value = mock_user
 
         # Act
@@ -65,8 +63,7 @@ class TestAuthService:
         # Assert
         assert result is not None
         access_token, user = result
-        mock_user_repository.hash_email.assert_called_once_with(email)
-        mock_user_repository.get_by_email.assert_called_once_with(email_hash)
+        mock_user_repository.get_by_email.assert_called_once_with(email)
         assert access_token is not None
         assert user == mock_user
 
@@ -75,16 +72,13 @@ class TestAuthService:
         # Arrange
         email = "test@example.com"
         password = "password123"
-        email_hash = "hashed_email"
-        mock_user_repository.hash_email.return_value = email_hash
         mock_user_repository.get_by_email.return_value = None
 
         # Act
         result = auth_service.login(email, password)
 
         # Assert
-        mock_user_repository.hash_email.assert_called_once_with(email)
-        mock_user_repository.get_by_email.assert_called_once_with(email_hash)
+        mock_user_repository.get_by_email.assert_called_once_with(email)
         assert result is None
 
     def test_login_incorrect_password(self, auth_service, mock_user_repository):
@@ -92,9 +86,7 @@ class TestAuthService:
         # Arrange
         email = "test@example.com"
         password = "wrong_password"
-        email_hash = "hashed_email"
         mock_user = MockUser(email, 'password123')
-        mock_user_repository.hash_email.return_value = email_hash
         mock_user_repository.get_by_email.return_value = mock_user
 
         auth_service.password_service.check_password.return_value = False
@@ -103,38 +95,5 @@ class TestAuthService:
         result = auth_service.login(email, password)
 
         # Assert
-        mock_user_repository.hash_email.assert_called_once_with(email)
-        mock_user_repository.get_by_email.assert_called_once_with(email_hash)
+        mock_user_repository.get_by_email.assert_called_once_with(email)
         assert result is None
-
-    def test_authenticate_success(self, auth_service, mock_user_repository, mock_user):
-        """Test successful authentication."""
-        # Arrange
-        email = mock_user.email_hash
-        email_hash = "hashed_email"
-        mock_user_repository.hash_email.return_value = email_hash
-        mock_user_repository.get_by_email.return_value = mock_user
-
-        # Act
-        user = auth_service.authenticate(email)
-
-        # Assert
-        mock_user_repository.hash_email.assert_called_once_with(email)
-        mock_user_repository.get_by_email.assert_called_once_with(email_hash)
-        assert user == mock_user
-
-    def test_authenticate_user_not_found(self, auth_service, mock_user_repository):
-        """Test authentication when the user is not found."""
-        # Arrange
-        email = "test@example.com"
-        email_hash = "hashed_email"
-        mock_user_repository.hash_email.return_value = email_hash
-        mock_user_repository.get_by_email.return_value = None
-
-        # Act
-        user = auth_service.authenticate(email)
-
-        # Assert
-        mock_user_repository.hash_email.assert_called_once_with(email)
-        mock_user_repository.get_by_email.assert_called_once_with(email_hash)
-        assert user is None

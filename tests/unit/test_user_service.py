@@ -25,18 +25,14 @@ class TestUserService:
         # Arrange
         email = "test@example.com"
         password = "password123"
-        email_hash = "dummy_email_hash"
         mock_user_repository.get_by_email.return_value = None
-        mock_user_repository.hash_email.return_value = email_hash
 
         # Act
         user = user_service.register_user(email, password)
 
         # Assert
-        mock_user_repository.hash_email.assert_called_once_with(email)
-        mock_user_repository.get_by_email.assert_called_once_with(email_hash)
+        mock_user_repository.get_by_email.assert_called_once_with(email)
         mock_user_repository.add.assert_called_once()
-        assert user.email_hash == email_hash
         mock_session.commit.assert_called_once()
 
     def test_register_user_duplicate_email(self, user_service, mock_user_repository):
@@ -44,17 +40,14 @@ class TestUserService:
         # Arrange
         email = "test@example.com"
         password = "password123"
-        email_hash = "dummy_email_hash"
-        mock_user_repository.get_by_email.return_value = {'email_hash': email_hash}
-        mock_user_repository.hash_email.return_value = email_hash
+        mock_user_repository.get_by_email.return_value = {'email': email}
 
         # Act & Assert
         with pytest.raises(ValueError) as excinfo:
             user_service.register_user(email, password)
         assert str(excinfo.value) == "User with this email already exists"
 
-        mock_user_repository.hash_email.assert_called_once_with(email)
-        mock_user_repository.get_by_email.assert_called_once_with(email_hash)
+        mock_user_repository.get_by_email.assert_called_once_with(email)
 
     def test_get_user_success(self, user_service, mock_user_repository):
         """Test getting a user by ID successfully."""
