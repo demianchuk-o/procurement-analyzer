@@ -34,3 +34,8 @@ class Config:
 
     JWT_DECODE_ISSUER = os.environ.get('JWT_ISSUER', None)
     JWT_DECODE_AUDIENCE = os.environ.get('JWT_AUDIENCE', None)
+
+    SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.example.com')
+    SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
+    SMTP_USER = os.environ.get('SMTP_USER', '')
+    SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
