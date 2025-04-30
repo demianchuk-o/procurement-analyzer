@@ -14,13 +14,9 @@ class UserRepository(BaseRepository[User]):
     def get_by_id(self, id: int) -> Optional[User]:
         return self._session.get(User, id)
 
-    def get_by_email(self, email_hash: str) -> Optional[User]:
+    def get_by_email(self, email: str) -> Optional[User]:
         """Gets a user by their hashed email."""
-        return self._session.query(User).filter(User.email_hash == email_hash).first()
-
-    def hash_email(self, email: str) -> str:
-        """Hashes the email using SHA-256."""
-        return hashlib.sha256(email.encode()).hexdigest()
+        return self._session.query(User).filter(User.email == email).first()
 
     def delete_user(self, user_id: int) -> bool:
         """Deletes a user by their ID, committing the changes."""

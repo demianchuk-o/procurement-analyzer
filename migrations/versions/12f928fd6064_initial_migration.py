@@ -27,10 +27,10 @@ def upgrade():
     )
     op.create_table('users',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('email_hash', sa.String(), nullable=False),
-    sa.Column('_password_hash', sa.String(length=255), nullable=False),
+    sa.Column('email', sa.String(255), nullable=False),
+    sa.Column('_password_hash', sa.String(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('email_hash')
+    sa.UniqueConstraint('email')
     )
     op.create_table('tenders',
     sa.Column('id', sa.String(length=32), nullable=False),

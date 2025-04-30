@@ -22,20 +22,19 @@ class AuthService:
 
     def register_user(self, email: str, password: str) -> User:
         """Registers a new user, hashing the email and setting the password."""
-        email_hash = self.user_repository.hash_email(email)
-        existing_user = self.user_repository.get_by_email(email_hash)
+
+        existing_user = self.user_repository.get_by_email(email)
         if existing_user:
             raise ValueError("User with this email already exists")
 
-        user = User(email_hash=email_hash)
+        user = User(email=email)
         user.password_hash = password
         self.user_repository.add(user)
         self.user_repository.commit()
         return user
 
     def login(self, email: str, password: str) -> Optional[Tuple[str, User]]:
-        email_hash = self.user_repository.hash_email(email)
-        user = self.user_repository.get_by_email(email_hash)
+        user = self.user_repository.get_by_email(email)
         if not user or not self.password_service.check_password(user.password_hash, password):
             return None
         access_token = create_access_token(identity=email)

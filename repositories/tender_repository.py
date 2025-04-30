@@ -78,7 +78,7 @@ class TenderRepository(BaseRepository[Tender]):
             e.g., {'tender-id-1': ['user1@example.com', 'user2@example.com']}
         """
         stmt = (
-            select(Tender.id, User.email_hash)
+            select(Tender.id, User.email)
             .join(UserSubscription, Tender.id == UserSubscription.tender_id)
             .join(User, UserSubscription.user_id == User.id)
             .where(Tender.date_modified > since_date)
