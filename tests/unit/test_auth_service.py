@@ -47,7 +47,7 @@ class TestAuthService:
         email, password = request.param
         return MockUser(email, password)
 
-    def test_register_user_success(self, auth_service, mock_user_repository, mock_session):
+    def test_register_user_success(self, auth_service, mock_user_repository):
         """Test successful user registration."""
         # Arrange
         email = "test@example.com"
@@ -60,7 +60,7 @@ class TestAuthService:
         # Assert
         mock_user_repository.get_by_email.assert_called_once_with(email)
         mock_user_repository.add.assert_called_once()
-        mock_session.commit.assert_called_once()
+        mock_user_repository.commit.assert_called_once()
 
     def test_register_user_duplicate_email(self, auth_service, mock_user_repository):
         """Test registration with an email that already exists."""
