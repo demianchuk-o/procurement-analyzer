@@ -49,7 +49,9 @@ class NotificationService:
 
                     for email in user_emails:
                         self.email_service.send_report(email, subject, html_report)
-                        logger.debug(f"Sent notification for tender {tender_id} to {email}")
+                        email_split = email.split('@')
+                        email_formatted = f"{email_split[0][:2]}***@{email_split[1]}"
+                        logger.debug(f"Sent notification for tender {tender_id} to {email_formatted}")
 
                 except ValueError as e:
                      logger.error(f"Could not generate report for tender {tender_id}: {e}")
