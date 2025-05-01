@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 class DatetimeProvider:
     def utc_now(self):
         """
