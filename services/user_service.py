@@ -25,8 +25,10 @@ class UserService:
 
     def delete_user(self, user_id: int) -> None:
         """Deletes a user and their subscriptions."""
-        user = self.get_user(user_id)
-        self.user_repository.delete_user(user.id)
+        user_exists = self._user_exists(user_id)
+        if not user_exists:
+            return
+        self.user_repository.delete_user(user_id)
 
     def subscribe_to_tender(self, user_id: int, tender_id: str) -> None:
         """Subscribes a user to a tender."""
