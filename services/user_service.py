@@ -8,13 +8,6 @@ class UserService:
         self.user_repository = user_repository
         self.tender_repository = tender_repository
 
-    def get_user(self, user_id: int) -> User:
-        """Retrieves a user by ID."""
-        user = self.user_repository.get_by_id(user_id)
-        if not user:
-            raise ValueError("User not found")
-        return user
-
     def _user_exists(self, user_id: int) -> bool:
         """Checks if a user exists."""
         return self.user_repository.exists_by_id(user_id)
