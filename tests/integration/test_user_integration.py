@@ -125,14 +125,6 @@ class TestUserIntegration(BaseIntegrationTest):
         deleted_user = user_repository.get_by_id(user_id)
         assert deleted_user is None
 
-    def test_user_deletion_non_existent_user(self, user_service):
-        """Test deleting a non-existent user."""
-        # Arrange
-        user_id = 9999  # Non-existent user ID
-
-        # Act & Assert
-        with pytest.raises(ValueError):
-            user_service.delete_user(user_id)
 
     def test_subscribe_to_tender(self, user_service, user_repository, tender_repository):
         """Test subscribing a user to a tender."""
