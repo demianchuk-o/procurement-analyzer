@@ -28,7 +28,7 @@ class EmailService:
         message.attach(part)
 
         try:
-            with smtplib.SMTP(self.smtp_server, self.port) as server:
+            with smtplib.SMTP(self.smtp_server, self.port, timeout=10) as server:
                 if self.use_tls:
                     server.starttls(context=self.context)
 
