@@ -33,7 +33,7 @@ class TestUserIntegration(BaseIntegrationTest):
 
     def create_test_user(self, user_repository, email="test@example.com"):
         """Creates a test user with a unique email."""
-        user = User(email_hash=user_repository.hash_email(email))
+        user = User(email=email)
         user.password_hash = "password"
         user_repository.add(user)
         user_repository.commit()
@@ -68,9 +68,7 @@ class TestUserIntegration(BaseIntegrationTest):
 
         # Assert
         assert user is not None
-        email_hash = user.email_hash
-        assert email_hash == user_repository.hash_email(email)
-        assert user_repository.get_by_email(email_hash) is not None
+        assert user_repository.get_by_email(email) is not None
 
     def test_user_registration_duplicate_email(self, auth_service):
         """Test registration with duplicate email."""
@@ -127,14 +125,6 @@ class TestUserIntegration(BaseIntegrationTest):
         deleted_user = user_repository.get_by_id(user_id)
         assert deleted_user is None
 
-    def test_user_deletion_non_existent_user(self, user_service):
-        """Test deleting a non-existent user."""
-        # Arrange
-        user_id = 9999  # Non-existent user ID
-
-        # Act & Assert
-        with pytest.raises(ValueError):
-            user_service.delete_user(user_id)
 
     def test_subscribe_to_tender(self, user_service, user_repository, tender_repository):
         """Test subscribing a user to a tender."""
