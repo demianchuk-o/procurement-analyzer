@@ -6,10 +6,12 @@ from urllib.parse import urljoin
 
 from schemas.discovery_schema import SearchPageSchema, TenderBridgeInfoSchema
 
+
 class DiscoveryProzorroClient:
     BASE_URL = 'https://prozorro.gov.ua/api/'
     SEARCH_ENDPOINT = 'search/tenders/'
     TENDER_ENDPOINT = 'tenders/'
+    COMPLAINTS_SUBPATH = 'complaints/'  # Added for the new method
 
     def __init__(self, retry_count: int = 3, retry_delay: int = 1, timeout: int = 10) -> None:
         self.retry_count = retry_count
@@ -90,5 +92,60 @@ class DiscoveryProzorroClient:
                 return validated_data
             except Exception as e:
                 self.logger.error(f"Error processing/validating bridge info for OCID {tender_id_ocid}: {e}")
+
+        return None
+
+    def fetch_complaint_texts(self, tender_id_ocid: str) -> Optional[List[str]]:
+        """
+        Fetches complaint texts for a specific tender using its OCID.
+        Extracts title and description from tenderComplaints, awardComplaints,
+        and cancellationComplaints arrays.
+        :param tender_id_ocid: The OCID (tenderID) of the tender.
+        :return: List of concatenated complaint texts (title + description) or None on error.
+        """
+        if not tender_id_ocid:
+            self.logger.error("tender_id_ocid cannot be empty for fetching complaints.")
+            return None
+
+        complaints_url = urljoin(self.BASE_URL,
+                                 urljoin(self.TENDER_ENDPOINT, f"{tender_id_ocid}/{self.COMPLAINTS_SUBPATH}"))
+        self.logger.info(f"Fetching complaints for tender OCID {tender_id_ocid}")
+
+        response = self._make_request(complaints_url)
+
+        if response:
+            complaint_texts = []
+            try:
+                complaints_data = response.json()
+
+                complaint_keys = ['tenderComplaints', 'awardComplaints', 'cancellationComplaints']
+
+                for key in complaint_keys:
+                    complaints_list = complaints_data.get(key)
+                    if isinstance(complaints_list, list):
+                        for complaint in complaints_list:
+                            if isinstance(complaint, dict):
+                                title = complaint.get('title', '') or ''
+                                description = complaint.get('description', '') or ''
+
+                                full_text = f"{title} {description}".strip()
+                                if full_text:
+                                    complaint_texts.append(full_text)
+                            else:
+                                self.logger.warning(
+                                    f"Item in '{key}' list is not a dictionary for OCID {tender_id_ocid}")
+                    elif complaints_list is not None:
+                        self.logger.warning(
+                            f"Expected list for '{key}' but got {type(complaints_list)} for OCID {tender_id_ocid}")
+
+                self.logger.info(
+                    f"Successfully fetched {len(complaint_texts)} complaint texts for OCID {tender_id_ocid}")
+                return complaint_texts
+
+            except ValueError as e:
+                self.logger.error(f"Error decoding JSON response for complaints of OCID {tender_id_ocid}: {e}")
+            except Exception as e:
+                self.logger.error(f"Error processing complaints response for OCID {tender_id_ocid}: {e}")
+
 
         return None
