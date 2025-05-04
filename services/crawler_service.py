@@ -7,14 +7,17 @@ from api.discovery_prozorro_client import DiscoveryProzorroClient
 from api.legacy_prozorro_client import LegacyProzorroClient
 from services.data_processor import DataProcessor
 from repositories.tender_repository import TenderRepository
+from services.text_processing_service import TextProcessingService
 
 
 class CrawlerService:
-    def __init__(self, tender_repo: TenderRepository) -> None:
+    def __init__(self, tender_repo: TenderRepository,
+                 text_processing_service: TextProcessingService) -> None:
         self.discovery_client = DiscoveryProzorroClient()
         self.legacy_client = LegacyProzorroClient()
         self.tender_repo = tender_repo
         self.data_processor = DataProcessor(tender_repo)
+        self.text_processor = text_processing_service
         self.logger = logging.getLogger(type(self).__name__)
 
     def sync_single_tender(self, tender_ocid: str) -> bool:
@@ -240,6 +243,11 @@ class CrawlerService:
                         self.logger.info(f"Collected tender-unique complaint/claim text: {title[:50]}...")
 
                         # process the title and description
+                        success = self.text_processor.process_and_store(complaint_title_desc)
+                        if not success:
+                            self.logger.warning(f"Failed to process and store text.")
+                        else:
+                            self.logger.info(f"Successfully processed and stored text.")
 
                         if processed_texts_count >= max_texts:
                             self.logger.info(f"Reached target of {max_texts} texts.")
