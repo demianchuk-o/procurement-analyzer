@@ -163,10 +163,10 @@ class CrawlerService:
 
     def gather_complaint_claim_texts(self, max_texts: int = 1000, start_page: int = 0) -> int:
         """
-                Crawls tenders, fetches legacy details, extracts unique complaint/claim texts, processes them and stores in a corpus.
+                Crawls tenders, fetches legacy details, extracts complaint/claim texts, processes them and stores in a corpus.
                 :param max_texts: The target number of complaint/claim texts to collect.
                 :param start_page: The search page to start crawling from.
-                :return: A count of unique complaint/claim texts collected.
+                :return: A count of complaint/claim texts processed.
                 """
         self.logger.info(f"Starting complaint/claim text gathering. Target: {max_texts} unique texts.")
 
@@ -179,10 +179,10 @@ class CrawlerService:
         }
 
         seen_raw_texts = set()
-        unique_texts_count = 0
+        processed_texts_count = 0
         current_page = start_page
 
-        while unique_texts_count < max_texts:
+        while processed_texts_count < max_texts:
             self.logger.info(f"Fetching tender OCIDs from search page {current_page} with expensive tender parameters.")
             tender_ocids = self.discovery_client.fetch_search_page_tender_ids(
                 page=current_page,
@@ -199,8 +199,10 @@ class CrawlerService:
             self.logger.info(f"Found {len(tender_ocids)} tender OCIDs on page {current_page}.")
 
             for ocid in tender_ocids:
-                if unique_texts_count >= max_texts:
+                if processed_texts_count >= max_texts:
                     break
+
+                # seen_raw_texts = set()
 
                 self.logger.debug(f"Fetching bridge info for OCID: {ocid}")
                 bridge_info = self.discovery_client.fetch_tender_bridge_info(ocid)
@@ -224,7 +226,8 @@ class CrawlerService:
                     continue
 
                 for complaint in complaint_claim_texts:
-                    if unique_texts_count >= max_texts:
+                    if processed_texts_count >= max_texts:
+                        seen_raw_texts.clear()
                         break
 
                     title = complaint.get("title")
@@ -237,16 +240,19 @@ class CrawlerService:
 
                     if not complaint_title_desc in seen_raw_texts:
                         seen_raw_texts.add(complaint_title_desc)
-                        unique_texts_count += 1
-                        self.logger.info(f"Collected unique complaint/claim text: {complaint_title_desc[0][1]}")
+                        processed_texts_count += 1
+                        self.logger.info(f"Collected tender-unique complaint/claim text: {complaint_title_desc[0][1]}")
 
                         # process the title and description
 
-                        if unique_texts_count >= max_texts:
-                            self.logger.info(f"Reached target of {max_texts} unique texts.")
+                        if processed_texts_count >= max_texts:
+                            self.logger.info(f"Reached target of {max_texts} texts.")
+                            seen_raw_texts.clear()
                             break
 
-            if unique_texts_count >= max_texts:
+                seen_raw_texts.clear()
+
+            if processed_texts_count >= max_texts:
                 break
 
             current_page += 1
@@ -254,5 +260,5 @@ class CrawlerService:
             time.sleep(0.5)
 
         self.logger.info(
-            f"Complaint/claim text gathering finished. Found and processed {unique_texts_count} unique texts.")
-        return unique_texts_count
+            f"Complaint/claim text gathering finished. Found and processed {processed_texts_count} texts.")
+        return processed_texts_count
