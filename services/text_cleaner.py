@@ -1,6 +1,8 @@
 import re
 import logging
 from langdetect import detect, LangDetectException
+import spacy
+
 class TextCleaner:
     """Cleans text by lowercasing, removing numbers, filtering for Ukrainian words,
     removing punctuation, and normalizing whitespace."""
@@ -14,6 +16,26 @@ class TextCleaner:
         self._ukr_char_pattern = re.compile(r'[а-яіїєґ]')
         self.logger = logging.getLogger(type(self).__name__)
         self.logger.info("TextCleaner initialized.")
+
+        self.accepted_pos = {"NOUN", "VERB", "ADJ", "ADV"}
+
+        try:
+            self.nlp = spacy.load("uk_core_news_sm", disable=["parser", "ner"])
+        except OSError:
+            self.logger.error("SpaCy Ukrainian model not found. Install with: python -m spacy download uk_core_news_sm")
+            raise
+
+
+    def _lemmatize(self, text: str) -> str:
+        doc = self.nlp(text)
+        lemmatized = [
+            token.lemma_
+            for token in doc
+            if token.pos_ in self.accepted_pos and not token.is_stop and token.is_alpha
+        ]
+
+        lemmatized_text = " ".join(lemmatized)
+        return lemmatized_text
 
     def clean(self, text: str) -> str:
         """
@@ -76,4 +98,8 @@ class TextCleaner:
         if not cleaned_text:
              self.logger.debug("Text became empty after cleaning.")
 
-        return cleaned_text
+        # lemmatize
+        lemmatized_text = self._lemmatize(cleaned_text)
+        self.logger.debug(f"Lemmatized text: '{lemmatized_text[:100]}...'")
+
+        return lemmatized_text
