@@ -1,6 +1,6 @@
 import re
 import logging
-
+from langdetect import detect, LangDetectException
 class TextCleaner:
     """Cleans text by lowercasing, removing numbers, filtering for Ukrainian words,
     removing punctuation, and normalizing whitespace."""
@@ -39,16 +39,26 @@ class TextCleaner:
         cleaned_text = self._space_pattern.sub(' ', cleaned_text).strip()
         self.logger.debug(f"Whitespace normalized (1): '{cleaned_text[:100]}...'")
 
-        # 4. Split into words
+        # split into words
         words = cleaned_text.split()
 
         # keep words only containing Ukrainian characters
-        ukrainian_words = [word for word in words if self._ukr_char_pattern.search(word)]
-        self.logger.debug(f"Filtered Ukrainian words count: {len(ukrainian_words)}")
+        potential_ukr_words = [word for word in words if self._ukr_char_pattern.search(word)]
+        self.logger.debug(f"Filtered Ukrainian words count: {len(potential_ukr_words)}")
 
         # join the kept words
-        cleaned_text = ' '.join(ukrainian_words)
+        cleaned_text = ' '.join(potential_ukr_words)
         self.logger.debug(f"Joined Ukrainian words: '{cleaned_text[:100]}...'")
+
+        # check if the text is Ukrainian (cyrillic languages ambiguity)
+        try:
+            lang = detect(cleaned_text)
+            if lang != 'uk':
+                self.logger.debug(f"Detected language is not Ukrainian: {lang}.")
+                return ""
+        except LangDetectException as e:
+            self.logger.warning(f"Language detection failed: {e}. Assuming non-Ukrainian text.")
+            return ""
 
         # remove anything not alphanumeric, whitespace, or Ukrainian letters
         cleaned_text = self._punct_pattern.sub('', cleaned_text)
