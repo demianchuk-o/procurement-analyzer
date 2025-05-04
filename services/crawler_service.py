@@ -161,12 +161,12 @@ class CrawlerService:
 
 
 
-    def gather_complaint_claim_texts(self, max_texts: int = 1000, start_page: int = 0) -> Optional[dict]:
+    def gather_complaint_claim_texts(self, max_texts: int = 1000, start_page: int = 0) -> int:
         """
-                Crawls tenders, fetches legacy details, and extracts raw complaint/claim texts.
+                Crawls tenders, fetches legacy details, extracts unique complaint/claim texts, processes them and stores in a corpus.
                 :param max_texts: The target number of complaint/claim texts to collect.
                 :param start_page: The search page to start crawling from.
-                :return: A list of raw complaint/claim strings.
+                :return: A count of unique complaint/claim texts collected.
                 """
         self.logger.info(f"Starting complaint/claim text gathering. Target: {max_texts} unique texts.")
 
