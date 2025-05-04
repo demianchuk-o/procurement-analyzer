@@ -89,7 +89,7 @@ class ComplaintCrawlerService:
                     complaint_title_desc = f"{title} {description}"
                     if not complaint_title_desc in seen_raw_texts:
                         seen_raw_texts.add(complaint_title_desc)
-                        processed_texts_count += 1
+
                         self.logger.info(f"Collected tender-unique complaint/claim text: {title[:50]}...")
 
                         # process the title and description
@@ -97,6 +97,7 @@ class ComplaintCrawlerService:
                         if not success:
                             self.logger.warning(f"Failed to process and store text.")
                         else:
+                            processed_texts_count += 1
                             self.logger.info(f"Successfully processed and stored text.")
 
                         if processed_texts_count >= max_texts:
