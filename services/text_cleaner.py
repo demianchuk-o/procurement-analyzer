@@ -46,6 +46,11 @@ class TextCleaner:
         potential_ukr_words = [word for word in words if self._ukr_char_pattern.search(word)]
         self.logger.debug(f"Filtered Ukrainian words count: {len(potential_ukr_words)}")
 
+        # if no Ukrainian words are found, return empty string
+        if not potential_ukr_words:
+            self.logger.debug("No Ukrainian words found. Returning empty string.")
+            return ""
+
         # join the kept words
         cleaned_text = ' '.join(potential_ukr_words)
         self.logger.debug(f"Joined Ukrainian words: '{cleaned_text[:100]}...'")
