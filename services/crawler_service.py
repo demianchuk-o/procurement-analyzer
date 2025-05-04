@@ -233,15 +233,11 @@ class CrawlerService:
                     title = complaint.get("title")
                     description = complaint.get("description")
 
-                    complaint_title_desc = (
-                        ("title", title),
-                        ("description", description)
-                    )
-
+                    complaint_title_desc = f"{title} {description}"
                     if not complaint_title_desc in seen_raw_texts:
                         seen_raw_texts.add(complaint_title_desc)
                         processed_texts_count += 1
-                        self.logger.info(f"Collected tender-unique complaint/claim text: {complaint_title_desc[0][1]}")
+                        self.logger.info(f"Collected tender-unique complaint/claim text: {title[:50]}...")
 
                         # process the title and description
 
