@@ -71,3 +71,30 @@ class DiscoveryProzorroClient:
                 self.logger.error(f"Error processing/validating search page {page} response: {e}")
 
         return None
+
+    def fetch_tender_bridge_info(self, tender_id_ocid: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetches bridging information (UUID, OCID, generalClassifier, dateModified)
+        for a specific tender using its OCID from the new API's /tenders/{ocid} endpoint.
+        :param tender_id_ocid: The OCID (tenderID) of the tender.
+        :return: Dict with bridge info or None if an error occurs.
+        """
+        if not tender_id_ocid:
+            self.logger.error("tender_id_ocid cannot be empty.")
+            return None
+
+        tender_url = urljoin(self.BASE_URL, urljoin(self.TENDER_ENDPOINT, f"{tender_id_ocid}/"))
+        self.logger.info(f"Fetching bridge info for tender OCID {tender_id_ocid}")
+
+        response = self._make_request(tender_url)
+
+        if response:
+            try:
+                data = response.json()
+                validated_data = self.bridge_info_schema.load(data)
+                self.logger.info(f"Successfully fetched bridge info for tender OCID {tender_id_ocid}")
+                return validated_data
+            except Exception as e:
+                self.logger.error(f"Error processing/validating bridge info for OCID {tender_id_ocid}: {e}")
+
+        return None
