@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import timezone
 from typing import Optional
 
@@ -157,3 +158,101 @@ class CrawlerService:
             self.tender_repo.commit()
             self.logger.info(f"Prepared new GeneralClassifier: ID {new_classification.id}, Scheme: {scheme}")
             return new_classification.id
+
+
+
+    def gather_complaint_claim_texts(self, max_texts: int = 1000, start_page: int = 0) -> Optional[dict]:
+        """
+                Crawls tenders, fetches legacy details, and extracts raw complaint/claim texts.
+                :param max_texts: The target number of complaint/claim texts to collect.
+                :param start_page: The search page to start crawling from.
+                :return: A list of raw complaint/claim strings.
+                """
+        self.logger.info(f"Starting complaint/claim text gathering. Target: {max_texts} unique texts.")
+
+        query_params = {
+            "proc_type[0]": "aboveThresholdUA",
+            "proc_type[1]": "aboveThresholdEU",
+            "proc_type[2]": "competitiveOrdering",
+            "sort_by": "value.amount",
+            "order": "desc",
+        }
+
+        seen_raw_texts = set()
+        unique_texts_count = 0
+        current_page = start_page
+
+        while unique_texts_count < max_texts:
+            self.logger.info(f"Fetching tender OCIDs from search page {current_page} with expensive tender parameters.")
+            tender_ocids = self.discovery_client.fetch_search_page_tender_ids(
+                page=current_page,
+                query_params=query_params
+            )
+
+            if tender_ocids is None:
+                self.logger.error(f"Failed to fetch tender OCIDs from page {current_page}. Stopping gathering.")
+                break
+            if not tender_ocids:
+                self.logger.info(f"No more tender OCIDs found on page {current_page}. Stopping gathering.")
+                break
+
+            self.logger.info(f"Found {len(tender_ocids)} tender OCIDs on page {current_page}.")
+
+            for ocid in tender_ocids:
+                if unique_texts_count >= max_texts:
+                    break
+
+                self.logger.debug(f"Fetching bridge info for OCID: {ocid}")
+                bridge_info = self.discovery_client.fetch_tender_bridge_info(ocid)
+                if not bridge_info:
+                    self.logger.warning(f"Could not fetch bridge info for OCID {ocid}, skipping.")
+                    continue
+
+                tender_uuid = bridge_info.get('id')
+                if not tender_uuid:
+                    self.logger.warning(f"Missing UUID in bridge info for OCID {ocid}, skipping.")
+                    continue
+
+                tender_details = self.legacy_client.fetch_tender_details(tender_uuid)
+                if not tender_details:
+                    self.logger.warning(f"Could not fetch legacy details for UUID {tender_uuid}, skipping.")
+                    continue
+
+                complaint_claim_texts = tender_details.get("complaints", [])
+                if not complaint_claim_texts:
+                    self.logger.warning(f"No complaints found in legacy details for UUID {tender_uuid}, skipping.")
+                    continue
+
+                for complaint in complaint_claim_texts:
+                    if unique_texts_count >= max_texts:
+                        break
+
+                    title = complaint.get("title")
+                    description = complaint.get("description")
+
+                    complaint_title_desc = (
+                        ("title", title),
+                        ("description", description)
+                    )
+
+                    if not complaint_title_desc in seen_raw_texts:
+                        seen_raw_texts.add(complaint_title_desc)
+                        unique_texts_count += 1
+                        self.logger.info(f"Collected unique complaint/claim text: {complaint_title_desc[0][1]}")
+
+                        # process the title and description
+
+                        if unique_texts_count >= max_texts:
+                            self.logger.info(f"Reached target of {max_texts} unique texts.")
+                            break
+
+            if unique_texts_count >= max_texts:
+                break
+
+            current_page += 1
+
+            time.sleep(0.5)
+
+        self.logger.info(
+            f"Complaint/claim text gathering finished. Found and processed {unique_texts_count} unique texts.")
+        return unique_texts_count
