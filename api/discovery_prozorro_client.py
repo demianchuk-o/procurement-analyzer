@@ -86,7 +86,7 @@ class DiscoveryProzorroClient:
         tender_url = urljoin(self.BASE_URL, urljoin(self.TENDER_ENDPOINT, f"{tender_id_ocid}/"))
         self.logger.info(f"Fetching bridge info for tender OCID {tender_id_ocid}")
 
-        response = self._make_request(tender_url)
+        response = self._make_request("GET", tender_url)
 
         if response:
             try:
