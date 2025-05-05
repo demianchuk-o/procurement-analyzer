@@ -9,12 +9,13 @@ from sklearn.preprocessing import normalize
 from pandas import DataFrame
 import pandas as pd
 
-from topic_modeling.topic_utils import load_corpus, load_stopwords_from_url, display_topics, get_topics
+from topic_modeling.topic_utils import load_corpus, load_stopwords_from_url, display_topics, get_topics, \
+    write_topics_to_json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-
-CORPUS_DIR = Path(__file__).resolve().parent.parent / "corpus_texts"
+TOP_LEVEL_DIR = Path(__file__).resolve().parent.parent
+CORPUS_DIR = TOP_LEVEL_DIR / "corpus_texts"
 N_TOPICS = 7 # number of topics from the graph
 N_TOP_WORDS = 10
 MAX_DF = 0.95
@@ -89,7 +90,7 @@ if __name__ == "__main__":
     logging.info("Displaying top words for each topic:")
     topics = get_topics(nmf_model, feature_names, N_TOP_WORDS)
     display_topics(topics)
-
+    write_topics_to_json(topics, TOP_LEVEL_DIR)
     logging.info("Topic modeling complete.")
 
     corpus_topic_df = DataFrame.from_dict({

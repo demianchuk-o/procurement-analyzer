@@ -76,3 +76,22 @@ def display_topics(topics: Dict[str, List[str]]):
     """Prints the top words for each topic."""
     for i, topic in topics.items():
         logging.info(f"Topic {i}: {', '.join(topic)}")
+
+import json
+
+def write_topics_to_json(topics: Dict[str, list[str]], output_dir: Path, output_file: str = "keywords.json") -> None:
+    """
+    Writes the topic dictionary to a JSON file.
+
+    Args:
+        topics (Dict[str, list[str]]): A dictionary where keys are topic numbers and values are lists of top words.
+        output_dir (Path): The directory to write the output JSON file to.
+        output_file (str): The name of the output JSON file. Defaults to 'keywords.json'.
+    """
+    output_path = output_dir / output_file
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(topics, f, ensure_ascii=False, indent=4)
+        logging.info(f"Topics successfully written to {output_path}")
+    except Exception as e:
+        logging.error(f"Error writing topics to {output_path}: {e}")
