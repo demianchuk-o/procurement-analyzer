@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import List, Dict
 
 import spacy
@@ -70,22 +70,52 @@ class ComplaintAnalysisService:
                         start = complaint_text.lower().find(token.text)
                         if start != -1:
                             highlighted.append({
-                                "Keyword": token.text,
-                                "Domain": domain,
-                                "StartPosition": start,
-                                "Length": len(token.text)
+                                "keyword": token.text,
+                                "domain": domain,
+                                "startPosition": start,
+                                "length": len(token.text)
                             })
         return highlighted
 
     def update_violation_scores(self, tender_id: str, complaint: Complaint) -> ViolationScore:
         """Updates violation scores based on complaint analysis."""
-        highlighted_keywords = []
-        if complaint.description:
-            highlighted_keywords = self.analyze_complaint_text(complaint.description)
-            complaint.highlighted_keywords = highlighted_keywords
+        highlighted_keywords = self.analyze_complaint_text(complaint.description)
 
-        domain_counts = Counter(item["Domain"] for item in highlighted_keywords)
-        scores = {domain: count for domain, count in domain_counts.items()}
+        aggregated_keywords = defaultdict(lambda: {"domains": set(), "startPosition": None, "length": None})
+        for item in highlighted_keywords:
+            keyword = item["keyword"]
+            domain = item["domain"]
+            start = item["startPosition"]
+            length = item["length"]
+
+            aggregated_keywords[keyword]["domains"].add(domain)
+            aggregated_keywords[keyword]["startPosition"] = start
+            aggregated_keywords[keyword]["length"] = length
+
+
+        complaint_keywords = []
+        for keyword, data in aggregated_keywords.items():
+            complaint_keywords.append({
+                "keyword": keyword,
+                "domains": list(data["domains"]),
+                "startPosition": data["startPosition"],
+                "length": data["length"]
+            })
+
+        self.violation_score_repo.update_complaint_highlighted_keywords(complaint, complaint_keywords)
+
+        scores = defaultdict(int)
+        for keyword_data in complaint_keywords:
+            domains = keyword_data["domains"]
+            num_domains = len(domains)
+
+            # Distribute score evenly across domains
+            score_per_domain = 1 / num_domains
+
+            for domain in domains:
+                scores[domain] += score_per_domain
+
+        scores = dict(scores)
 
         existing_score = self.violation_score_repo.get_by_tender_id(tender_id)
         if existing_score:
