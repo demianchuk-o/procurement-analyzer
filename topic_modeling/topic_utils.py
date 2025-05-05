@@ -1,7 +1,7 @@
 import logging
 import re
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import numpy as np
 import requests
@@ -49,18 +49,30 @@ def load_stopwords_from_url(url: str) -> Optional[List[str]]:
         logging.error(f"An error occurred processing stopwords from {url}: {e}")
         return None
 
-def display_topics(model: NMF, feature_names: list[str], n_top_words: int):
-    """Prints the top words for each topic found by the NMF model."""
-    #for topic_idx, topic in enumerate(model.components_):
-    #    top_features_indices = topic.argsort()[:-n_top_words - 1:-1]
-    #    top_features = [feature_names[i] for i in top_features_indices]
-    #    print(f"Topic #{topic_idx}:")
-    #    print(" ".join(top_features))
 
+def get_topics(model: NMF, feature_names: list[str], n_top_words: int) -> Dict[str, List[str]]:
+    """
+    Extracts the top words for each topic from the NMF model.
+
+    Args:
+        model (NMF): Trained NMF model.
+        feature_names (list[str]): List of feature names from CountVectorizer.
+        n_top_words (int): Number of top words to include for each topic.
+
+    Returns:
+        Dict[str, List[str]]: A dictionary where keys are topic numbers (as strings)
+                                and values are lists of top words for that topic.
+    """
     topic_terms = model.components_
     vocabulary = np.array(feature_names)
     topic_key_term_idxs = np.argsort(-np.absolute(topic_terms), axis=1)[:, :n_top_words]
     topic_keyterms = vocabulary[topic_key_term_idxs]
-    topics = [", ".join(topic) for topic in topic_keyterms]
-    for i, topic in enumerate(topics):
-        logging.info(f"Topic {i}: {topic}")
+
+    topics_dict = {str(i): list(topic) for i, topic in enumerate(topic_keyterms)}
+    return topics_dict
+
+
+def display_topics(topics: Dict[str, List[str]]):
+    """Prints the top words for each topic."""
+    for i, topic in topics.items():
+        logging.info(f"Topic {i}: {', '.join(topic)}")

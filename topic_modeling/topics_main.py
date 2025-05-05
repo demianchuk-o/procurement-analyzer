@@ -9,7 +9,7 @@ from sklearn.preprocessing import normalize
 from pandas import DataFrame
 import pandas as pd
 
-from topic_modeling.topic_utils import load_corpus, load_stopwords_from_url, display_topics
+from topic_modeling.topic_utils import load_corpus, load_stopwords_from_url, display_topics, get_topics
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -87,7 +87,8 @@ if __name__ == "__main__":
     logging.info(f"Silhouette Score: {sil_core:.4f}")
 
     logging.info("Displaying top words for each topic:")
-    display_topics(nmf_model, feature_names, N_TOP_WORDS)
+    topics = get_topics(nmf_model, feature_names, N_TOP_WORDS)
+    display_topics(topics)
 
     logging.info("Topic modeling complete.")
 
