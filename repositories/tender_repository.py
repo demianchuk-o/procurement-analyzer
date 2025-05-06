@@ -24,9 +24,8 @@ class TenderRepository(BaseRepository[Tender]):
         :param tender_uuid: UUID of the tender.
         :return: A dictionary containing the tender ID and date modified.
         """
-        short_data = self._session.query(Tender).filter(Tender.id == tender_uuid).with_entities(
-            Tender.id,
-            Tender.date_modified
+        short_data = self._session.query(Tender.id, Tender.date_modified).filter(
+            Tender.id == tender_uuid
         ).first()
 
         if short_data:
@@ -73,17 +72,13 @@ class TenderRepository(BaseRepository[Tender]):
         self._session.flush()
         return new_classification
 
-    def get_subscribed_tender_ocids(self) -> List[str]:
+    def get_tenders_ocid_status(self) -> List[Tuple[str, str]]:
         """
-        Fetches OCIDs of tenders that have user subscriptions.
+        Fetches OCIDs and statuses of tenders as a list of tuples.
         """
-        return [
-            row[0] for row in self._session.query(Tender.ocid)
-            .join(UserSubscription, UserSubscription.tender_id == Tender.id)
-            .filter(Tender.ocid.isnot(None))
-            .distinct()
-            .all()
-        ]
+        return self._session.query(Tender.ocid, Tender.status).filter(
+            Tender.ocid.isnot(None)
+        ).all()
 
     def get_complaint_by_id(self, complaint_id: str) -> Optional[Complaint]:
         """
