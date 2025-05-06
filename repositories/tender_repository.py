@@ -18,6 +18,18 @@ class TenderRepository(BaseRepository[Tender]):
     def get_by_id(self, id: str) -> Optional[Tender]:
         return self._session.get(Tender, id)
 
+    def get_short_by_uuid(self, tender_uuid: str) -> Optional[Dict]:
+        """
+        Fetches a tender by its UUID and returns a short representation.
+        :param tender_uuid: UUID of the tender.
+        :return: A dictionary containing the tender ID and date modified.
+        """
+        return self._session.query(Tender).filter(Tender.id == tender_uuid).with_entities(
+            Tender.id,
+            Tender.date_modified
+        ).first()
+
+
     def exists_by_id(self, id: str) -> bool:
         """Checks if a tender exists by its ID."""
         return self._session.query(Tender).filter(Tender.id == id).count() > 0
