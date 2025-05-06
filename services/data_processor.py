@@ -5,6 +5,9 @@ from typing import List, Dict, Any, Optional, Type
 from celery import shared_task
 from marshmallow import Schema
 
+from db import db
+from app import app
+
 from api.legacy_prozorro_client import LegacyProzorroClient
 from models import (TenderChange, TenderDocument, TenderDocumentChange, Award, AwardChange,
                     Bid, BidChange, Complaint, ComplaintChange)
@@ -27,22 +30,23 @@ def process_tender_data_task(tender_uuid: str,
     Celery task to process tender data.
     """
     logger = logging.getLogger(__name__)
-    try:
-        tender_repo = TenderRepository()  # fixme: inject session
-        data_processor = DataProcessor(tender_repo)
+    with app.app_context():
+        try:
+            tender_repo = TenderRepository(db.session)
+            data_processor = DataProcessor(tender_repo)
 
-        data_processor.process_tender_data(
-            tender_uuid=tender_uuid,
-            tender_ocid=tender_ocid,
-            date_modified_utc=date_modified_utc,
-            general_classifier_id=general_classifier_id,
-        )
+            data_processor.process_tender_data(
+                tender_uuid=tender_uuid,
+                tender_ocid=tender_ocid,
+                date_modified_utc=date_modified_utc,
+                general_classifier_id=general_classifier_id,
+            )
 
-        logger.info(f"Successfully processed tender UUID {tender_uuid}")
+            logger.info(f"Successfully processed tender UUID {tender_uuid}")
 
-    except Exception as e:
-        logger.error(f"Error processing tender UUID {tender_uuid}: {e}", exc_info=True)
-        raise
+        except Exception as e:
+            logger.error(f"Error processing tender UUID {tender_uuid}: {e}", exc_info=True)
+            raise
 
 class DataProcessor:
     def __init__(self, tender_repo: TenderRepository) -> None:
