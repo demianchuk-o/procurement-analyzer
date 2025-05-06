@@ -41,10 +41,10 @@ class CrawlerService:
         try:
             existing_tender = self.tender_repo.get_short_by_uuid(tender_uuid)
 
-            if (existing_tender and existing_tender.date_modified
-                    and existing_tender.date_modified.astimezone(timezone.utc) >= date_modified_utc):
+            if (existing_tender is not None and existing_tender["date_modified"]
+                    and existing_tender["date_modified"].astimezone(timezone.utc) >= date_modified_utc):
                 self.logger.debug(
-                    f"Tender UUID {tender_uuid} (OCID {tender_ocid}) unchanged (DB date: {existing_tender.date_modified}, API date: {date_modified_utc}), skipping detailed fetch.")
+                    f"Tender UUID {tender_uuid} (OCID {tender_ocid}) is up to date. No sync needed.")
                 return
 
             general_classifier_id = self._find_or_create_general_classifier(classifier_data)

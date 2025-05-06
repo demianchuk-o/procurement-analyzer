@@ -24,10 +24,17 @@ class TenderRepository(BaseRepository[Tender]):
         :param tender_uuid: UUID of the tender.
         :return: A dictionary containing the tender ID and date modified.
         """
-        return self._session.query(Tender).filter(Tender.id == tender_uuid).with_entities(
+        short_data = self._session.query(Tender).filter(Tender.id == tender_uuid).with_entities(
             Tender.id,
             Tender.date_modified
         ).first()
+
+        if short_data:
+            return {
+                'id': short_data[0],
+                'date_modified': short_data[1]
+            }
+        return None
 
 
     def exists_by_id(self, id: str) -> bool:
