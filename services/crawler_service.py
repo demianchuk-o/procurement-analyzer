@@ -4,7 +4,6 @@ from datetime import timezone
 from typing import Optional
 
 from api.discovery_prozorro_client import DiscoveryProzorroClient
-from api.legacy_prozorro_client import LegacyProzorroClient
 from services.data_processor import process_tender_data_task
 from repositories.tender_repository import TenderRepository
 
@@ -13,7 +12,6 @@ finished_tenders_statuses = ["complete", "cancelled", "unsuccessful", "active.aw
 class CrawlerService:
     def __init__(self, tender_repo: TenderRepository) -> None:
         self.discovery_client = DiscoveryProzorroClient()
-        self.legacy_client = LegacyProzorroClient()
         self.tender_repo = tender_repo
         self.logger = logging.getLogger(type(self).__name__)
 
