@@ -125,7 +125,7 @@ def upgrade():
     op.create_table('awards',
     sa.Column('id', sa.String(length=32), nullable=False),
     sa.Column('tender_id', sa.String(length=32), nullable=False),
-    sa.Column('bid_id', sa.String(length=32), nullable=False),
+    sa.Column('bid_id', sa.String(length=32), nullable=True),
     sa.Column('status', sa.String(), nullable=True),
     sa.Column('title', sa.String(), nullable=True),
     sa.Column('value_amount', sa.Numeric(precision=18, scale=2), nullable=True),

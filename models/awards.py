@@ -9,7 +9,7 @@ class Award(db.Model):
 
     id = Column(String(32), primary_key=True)
     tender_id = Column(String(32), ForeignKey('tenders.id'), nullable=False)
-    bid_id = Column(String(32), ForeignKey('bids.id'), nullable = False)
+    bid_id = Column(String(32), ForeignKey('bids.id'))
     status = Column(String)
     title = Column(String)
     value_amount = Column(Numeric(18, 2))
