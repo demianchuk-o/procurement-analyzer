@@ -1,10 +1,11 @@
-from celery_app import app
+from celery_app import app as celery_app
 from repositories.tender_repository import TenderRepository
 from services.crawler_service import CrawlerService
 from services.datetime_provider import DatetimeProvider
 from services.email_service import EmailService
 from services.html_report_builder import HtmlReportBuilder
 from services.notification_service import NotificationService
+from app import app
 from db import db
 from services.report_generation_service import ReportGenerationService
 
@@ -16,21 +17,21 @@ def create_report_builder():
     """Create a ReportBuilder instance."""
     return ReportGenerationService(db.session)
 
-@app.task(name='tasks.crawl_tenders_task')
+@celery_app.task(name='tasks.crawl_tenders_task')
 def crawl_tenders_task():
     with app.app_context():
         tender_repository = create_tender_repository()
         crawler_service = CrawlerService(tender_repository)
         crawler_service.crawl_tenders(pages_to_crawl=1)
 
-@app.task(name='tasks.sync_all_tenders_task')
+@celery_app.task(name='tasks.sync_all_tenders_task')
 def sync_all_tenders_task():
     with app.app_context():
         tender_repository = create_tender_repository()
         crawler_service = CrawlerService(tender_repository)
         crawler_service.sync_all_tenders()
 
-@app.task(name='tasks.send_notifications_task')
+@celery_app.task(name='tasks.send_notifications_task')
 def send_notifications_task():
     with app.app_context():
         notification_service = NotificationService(
