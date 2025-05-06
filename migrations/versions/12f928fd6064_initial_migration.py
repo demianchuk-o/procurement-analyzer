@@ -93,7 +93,7 @@ def upgrade():
     sa.Column('tender_id', sa.String(length=32), nullable=False),
     sa.Column('document_of', sa.String(), nullable=True),
     sa.Column('title', sa.String(), nullable=True),
-    sa.Column('format', sa.String(length=50), nullable=True),
+    sa.Column('format', sa.String(), nullable=True),
     sa.Column('url', sa.Text(), nullable=True),
     sa.Column('hash', sa.Text(), nullable=True),
     sa.Column('date_published', sa.DateTime(), nullable=True),
