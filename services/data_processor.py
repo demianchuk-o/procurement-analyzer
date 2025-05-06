@@ -30,12 +30,6 @@ def process_tender_data_task(tender_uuid: str,
     try:
         tender_repo = TenderRepository()  # fixme: inject session
         data_processor = DataProcessor(tender_repo)
-        legacy_client = LegacyProzorroClient()
-
-        legacy_details = legacy_client.fetch_tender_details(tender_uuid)
-        if not legacy_details:
-            logger.warning(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
-            raise Exception(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
 
         data_processor.process_tender_data(
             tender_uuid=tender_uuid,
@@ -54,6 +48,7 @@ class DataProcessor:
     def __init__(self, tender_repo: TenderRepository) -> None:
         self.logger = logging.getLogger(type(self).__name__)
         self.tender_repo = tender_repo
+        self.legacy_client = LegacyProzorroClient()
 
         self.tender_schema = TenderSchema()
         self.tender_document_schema = TenderDocumentSchema()
@@ -231,13 +226,17 @@ class DataProcessor:
                             tender_uuid: str,
                             tender_ocid: Optional[str],
                             date_modified_utc: datetime,
-                            general_classifier_id: Optional[int],
-                            legacy_details: Dict[str, Any]) -> bool:
+                            general_classifier_id: Optional[int]) -> bool:
         """
         Processes the full legacy tender data, updates DB, and records changes.
         Manages its own transaction within the provided session.
         """
         self.logger.info(f"Processing tender UUID {tender_uuid} (OCID: {tender_ocid})")
+
+        legacy_details = self.legacy_client.fetch_tender_details(tender_uuid)
+        if not legacy_details:
+            self.logger.warning(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
+            raise Exception(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
 
         if not tender_uuid:
             self.logger.error("Tender UUID is missing, cannot process.")
