@@ -1,9 +1,15 @@
-FROM python:3.9:slim
+FROM python:3.9-slim
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir wheel && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
