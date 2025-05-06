@@ -6,10 +6,12 @@ from urllib.parse import urljoin
 
 from schemas.discovery_schema import SearchPageSchema, TenderBridgeInfoSchema
 
+
 class DiscoveryProzorroClient:
     BASE_URL = 'https://prozorro.gov.ua/api/'
     SEARCH_ENDPOINT = 'search/tenders/'
     TENDER_ENDPOINT = 'tenders/'
+    COMPLAINTS_SUBPATH = 'complaints/'  # Added for the new method
 
     def __init__(self, retry_count: int = 3, retry_delay: int = 1, timeout: int = 10) -> None:
         self.retry_count = retry_count
@@ -19,11 +21,11 @@ class DiscoveryProzorroClient:
         self.search_page_schema = SearchPageSchema()
         self.bridge_info_schema = TenderBridgeInfoSchema()
 
-    def _make_request(self, url: str, params: Optional[Dict] = None) -> Optional[requests.Response]:
+    def _make_request(self, method: str, url: str, params: Optional[Dict] = None) -> Optional[requests.Response]:
         """Internal helper to make requests with retries."""
         for attempt in range(1, self.retry_count + 1):
             try:
-                response = requests.get(url, params=params, timeout=self.timeout)
+                response = requests.request(method, url, params=params, timeout=self.timeout)
                 response.raise_for_status()
                 return response
             except requests.exceptions.RequestException as e:
@@ -37,10 +39,12 @@ class DiscoveryProzorroClient:
         self.logger.error(f"Max retries exceeded or fatal error for URL {url}")
         return None
 
-    def fetch_search_page_tender_ids(self, page: int = 0) -> Optional[List[str]]:
+    def fetch_search_page_tender_ids(self, page: int = 0,
+                                     query_params: Optional[Dict[str, Any]] = None) -> Optional[List[str]]:
         """
         Fetches a specific page from the /search/tenders/ endpoint and returns only tenderIDs (OCIDs).
         :param page: The page number to fetch (0-based).
+        :param query_params: Optional query parameters to filter the search.
         :return: List of tenderIDs (OCIDs) or None if an error occurs.
         """
         if page < 0:
@@ -48,10 +52,12 @@ class DiscoveryProzorroClient:
             return None
 
         search_url = urljoin(self.BASE_URL, self.SEARCH_ENDPOINT)
-        params = { "page": page } if page > 0 else None
+
+        params = query_params.copy() if query_params else {}
+        params["page"] = page if page > 0 else None
         self.logger.info(f"Fetching search page {page} with params: {params}")
 
-        response = self._make_request(search_url, params=params)
+        response = self._make_request("POST", search_url, params=params)
 
         if response:
             try:
@@ -80,7 +86,7 @@ class DiscoveryProzorroClient:
         tender_url = urljoin(self.BASE_URL, urljoin(self.TENDER_ENDPOINT, f"{tender_id_ocid}/"))
         self.logger.info(f"Fetching bridge info for tender OCID {tender_id_ocid}")
 
-        response = self._make_request(tender_url)
+        response = self._make_request("GET", tender_url)
 
         if response:
             try:

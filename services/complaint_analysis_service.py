@@ -1,16 +1,11 @@
 import json
 import logging
 import os
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import List, Dict
 
-import nltk
+import spacy
 from celery import shared_task
-from nltk.stem import SnowballStemmer
-from nltk.tokenize import word_tokenize
-
-nltk.download('punkt_tab')
-stemmer = SnowballStemmer("russian")
 
 from db import db
 from models import Complaint
@@ -39,102 +34,99 @@ def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
     finally:
         db.session.close()
 
+
 class ComplaintAnalysisService:
     def __init__(self, violation_score_repo: ViolationScoreRepository,
-                 keywords_path: str = '../util/keywords.json'):
+                 keywords_path: str = '../keywords.json',
+                 spacy_model: str = "uk_core_news_sm"):
         self.violation_score_repo = violation_score_repo
         self.logger = logging.getLogger(type(self).__name__)
-        self.stemmer = stemmer
+        self.nlp = spacy.load(spacy_model, disable=["parser", "ner"])
         script_dir = os.path.dirname(os.path.abspath(__file__))
         full_keywords_path = os.path.join(script_dir, keywords_path)
-        self.stemmed_keywords = self._load_and_stem_keywords(full_keywords_path)
-
-    def _load_and_stem_keywords(self, keywords_path: str) -> Dict:
-        """Loads keywords from a JSON file and stems them."""
-        keywords = self._load_keywords(keywords_path)
-        stemmed_keywords = {}
-        for domain, words in keywords.items():
-            stemmed_keywords[domain] = list(set(self.stemmer.stem(word.lower()) for word in words))
-        return stemmed_keywords
+        self.keywords = self._load_keywords(full_keywords_path)
+        self.lemmatized_keywords = self._lemmatize_keywords(self.keywords)
 
     def _load_keywords(self, keywords_path: str) -> Dict:
         """Loads keywords from a JSON file."""
         with open(keywords_path, 'r', encoding='utf-8') as file:
             return json.load(file)
 
+    def _lemmatize_keywords(self, keywords: Dict) -> Dict[str, List[str]]:
+        """Lemmatizes keywords using spaCy."""
+        lemmatized_keywords = {}
+        for domain, words in keywords.items():
+            lemmatized_keywords[domain] = [self.nlp(word)[0].lemma_ for word in words]
+        return lemmatized_keywords
+
     def analyze_complaint_text(self, complaint_text: str) -> List[Dict]:
-        """Analyzes complaint text using stemming and returns highlighted keywords."""
-        tokenized_complaint = word_tokenize(complaint_text.lower())
-        stemmed_tokens = [self.stemmer.stem(token) for token in tokenized_complaint]
+        """Analyzes complaint text using spaCy lemmatization and returns highlighted keywords."""
+        doc = self.nlp(complaint_text.lower())
         highlighted = []
-        for domain, keywords in self.stemmed_keywords.items():
+        for domain, keywords in self.lemmatized_keywords.items():
             for keyword in keywords:
-                if keyword in stemmed_tokens:
-                    index = stemmed_tokens.index(keyword)
-                    original_token = tokenized_complaint[index]
-                    start = complaint_text.lower().find(original_token)
-                    if start != -1:
-                        highlighted.append({
-                            "Keyword": original_token,
-                            "Domain": domain,
-                            "StartPosition": start,
-                            "Length": len(original_token)
-                        })
+                for token in doc:
+                    if token.lemma_ == keyword:
+                        start = complaint_text.lower().find(token.text)
+                        if start != -1:
+                            highlighted.append({
+                                "keyword": token.text,
+                                "domain": domain,
+                                "startPosition": start,
+                                "length": len(token.text)
+                            })
         return highlighted
 
     def update_violation_scores(self, tender_id: str, complaint: Complaint) -> ViolationScore:
         """Updates violation scores based on complaint analysis."""
-        scores = {
-            "discriminatory_requirements_score": 0,
-            "unjustified_high_price_score": 0,
-            "tender_documentation_issues_score": 0,
-            "procedural_violations_score": 0,
-            "technical_specification_issues_score": 0
-        }
+        highlighted_keywords = self.analyze_complaint_text(complaint.description)
 
-        if complaint.description:
-            highlighted_keywords = self.analyze_complaint_text(complaint.description)
-            complaint.highlighted_keywords = highlighted_keywords
+        aggregated_keywords = defaultdict(lambda: {"domains": set(), "startPosition": None, "length": None})
+        for item in highlighted_keywords:
+            keyword = item["keyword"]
+            domain = item["domain"]
+            start = item["startPosition"]
+            length = item["length"]
 
-            domain_counts = Counter(item["Domain"] for item in highlighted_keywords)
-            most_frequent_domain = domain_counts.most_common(1)
+            aggregated_keywords[keyword]["domains"].add(domain)
+            aggregated_keywords[keyword]["startPosition"] = start
+            aggregated_keywords[keyword]["length"] = length
 
-            if most_frequent_domain:
-                most_frequent_domain_name = most_frequent_domain[0][0]
-                if most_frequent_domain_name == "discriminatory_requirements":
-                    scores["discriminatory_requirements_score"] += 1
-                elif most_frequent_domain_name == "unjustified_high_price":
-                    scores["unjustified_high_price_score"] += 1
-                elif most_frequent_domain_name == "tender_documentation_issues":
-                    scores["tender_documentation_issues_score"] += 1
-                elif most_frequent_domain_name == "procedural_violations":
-                    scores["procedural_violations_score"] += 1
-                elif most_frequent_domain_name == "technical_specification_issues":
-                    scores["technical_specification_issues_score"] += 1
 
+        complaint_keywords = []
+        for keyword, data in aggregated_keywords.items():
+            complaint_keywords.append({
+                "keyword": keyword,
+                "domains": list(data["domains"]),
+                "startPosition": data["startPosition"],
+                "length": data["length"]
+            })
+
+        self.violation_score_repo.update_complaint_highlighted_keywords(complaint, complaint_keywords)
+
+        scores = defaultdict(int)
+        for keyword_data in complaint_keywords:
+            domains = keyword_data["domains"]
+            num_domains = len(domains)
+
+            # Distribute score evenly across domains
+            score_per_domain = 1 / num_domains
+
+            for domain in domains:
+                scores[domain] += score_per_domain
+
+        scores = dict(scores)
 
         existing_score = self.violation_score_repo.get_by_tender_id(tender_id)
         if existing_score:
-            existing_score.discriminatory_requirements_score = scores["discriminatory_requirements_score"]
-            existing_score.unjustified_high_price_score = scores["unjustified_high_price_score"]
-            existing_score.tender_documentation_issues_score = scores["tender_documentation_issues_score"]
-            existing_score.procedural_violations_score = scores["procedural_violations_score"]
-            existing_score.technical_specification_issues_score = scores["technical_specification_issues_score"]
-
+            existing_score.scores = scores
             self.violation_score_repo.flush()
             self.violation_score_repo.commit()
 
             self.logger.info(f"Updated violation scores for tender {tender_id}")
             return existing_score
         else:
-            new_score = ViolationScore(
-                tender_id=tender_id,
-                discriminatory_requirements_score=scores["discriminatory_requirements_score"],
-                unjustified_high_price_score=scores["unjustified_high_price_score"],
-                tender_documentation_issues_score=scores["tender_documentation_issues_score"],
-                procedural_violations_score=scores["procedural_violations_score"],
-                technical_specification_issues_score=scores["technical_specification_issues_score"]
-            )
+            new_score = ViolationScore(tender_id=tender_id, scores=scores)
             self.violation_score_repo.create(new_score)
 
             self.logger.info(f"Created violation scores for tender {tender_id}")

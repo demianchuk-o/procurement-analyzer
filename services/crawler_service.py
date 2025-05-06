@@ -1,4 +1,5 @@
 import logging
+
 from datetime import timezone
 from typing import Optional
 
@@ -157,3 +158,4 @@ class CrawlerService:
             self.tender_repo.commit()
             self.logger.info(f"Prepared new GeneralClassifier: ID {new_classification.id}, Scheme: {scheme}")
             return new_classification.id
+
