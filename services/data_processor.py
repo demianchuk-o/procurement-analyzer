@@ -5,7 +5,6 @@ from typing import List, Dict, Any, Optional, Type
 from celery import shared_task
 from marshmallow import Schema
 
-from db import db
 from app import app
 
 from api.legacy_prozorro_client import LegacyProzorroClient
@@ -20,6 +19,8 @@ from schemas.tender_document_schema import TenderDocumentSchema
 from schemas.tender_schema import TenderSchema
 
 from services.complaint_analysis_service import analyze_complaint_and_update_score
+from util.db_context_manager import session_scope
+
 
 @shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
 def process_tender_data_task(tender_uuid: str,
@@ -30,9 +31,9 @@ def process_tender_data_task(tender_uuid: str,
     Celery task to process tender data.
     """
     logger = logging.getLogger(__name__)
-    with app.app_context():
+    with app.app_context(), session_scope() as session:
         try:
-            tender_repo = TenderRepository(db.session)
+            tender_repo = TenderRepository(session)
             data_processor = DataProcessor(tender_repo)
 
             data_processor.process_tender_data(
