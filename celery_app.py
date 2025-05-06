@@ -12,7 +12,7 @@ import tasks
 app.conf.beat_schedule = {
     'crawl-tenders-every-15-minutes': {
         'task': 'tasks.crawl_tenders_task',
-        'schedule': crontab(minute='*/2'),
+        'schedule': crontab(minute='*/1'),
     },
     'sync-all-tenders-every-hour': {
         'task': 'tasks.sync_all_tenders_task',
