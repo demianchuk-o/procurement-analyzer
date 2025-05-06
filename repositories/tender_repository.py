@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
