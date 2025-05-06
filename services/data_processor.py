@@ -2,8 +2,10 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Type
 
+from celery import shared_task
 from marshmallow import Schema
 
+from api.legacy_prozorro_client import LegacyProzorroClient
 from models import (TenderChange, TenderDocument, TenderDocumentChange, Award, AwardChange,
                     Bid, BidChange, Complaint, ComplaintChange)
 from models.typing import ChangeT, EntityT
@@ -15,6 +17,38 @@ from schemas.tender_document_schema import TenderDocumentSchema
 from schemas.tender_schema import TenderSchema
 
 from services.complaint_analysis_service import analyze_complaint_and_update_score
+
+@shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
+def process_tender_data_task(tender_uuid: str,
+                            tender_ocid: Optional[str],
+                            date_modified_utc: datetime,
+                            general_classifier_id: Optional[int]) -> None:
+    """
+    Celery task to process tender data.
+    """
+    logger = logging.getLogger(__name__)
+    try:
+        tender_repo = TenderRepository()  # fixme: inject session
+        data_processor = DataProcessor(tender_repo)
+        legacy_client = LegacyProzorroClient()
+
+        legacy_details = legacy_client.fetch_tender_details(tender_uuid)
+        if not legacy_details:
+            logger.warning(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
+            raise Exception(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
+
+        data_processor.process_tender_data(
+            tender_uuid=tender_uuid,
+            tender_ocid=tender_ocid,
+            date_modified_utc=date_modified_utc,
+            general_classifier_id=general_classifier_id,
+        )
+
+        logger.info(f"Successfully processed tender UUID {tender_uuid}")
+
+    except Exception as e:
+        logger.error(f"Error processing tender UUID {tender_uuid}: {e}", exc_info=True)
+        raise
 
 class DataProcessor:
     def __init__(self, tender_repo: TenderRepository) -> None:
