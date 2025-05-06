@@ -8,6 +8,7 @@ from api.legacy_prozorro_client import LegacyProzorroClient
 from services.data_processor import process_tender_data_task
 from repositories.tender_repository import TenderRepository
 
+finished_tenders_statuses = ["complete", "cancelled", "unsuccessful", "active.awarded", "draft.unsuccessful"]
 
 class CrawlerService:
     def __init__(self, tender_repo: TenderRepository) -> None:
@@ -61,23 +62,26 @@ class CrawlerService:
         except Exception as e:
             self.logger.error(f"Unexpected error syncing tender OCID {tender_ocid}: {e}", exc_info=True)
 
-    def sync_subscribed_tenders(self) -> int:
-        """Syncs all tenders that users are subscribed to."""
-        self.logger.info("Syncing subscribed tenders")
+    def sync_all_tenders(self) -> int:
+        """Syncs all tenders in the database."""
+        self.logger.info("Syncing all tenders")
         processed_count = 0
 
         try:
-            # Get (UUID, OCID) pairs directly with a single join query
-            subscribed_tender_ocids = self.tender_repo.get_subscribed_tender_ocids()
-            self.logger.info(f"Found {len(subscribed_tender_ocids)} subscribed tenders.")
+            # Get OCIDs of tenders
+            ocids_statuses = self.tender_repo.get_tenders_ocid_status()
+            self.logger.info(f"Found {len(ocids_statuses)} tenders.")
 
-            for tender_ocid in subscribed_tender_ocids:
-                self.logger.info(f"Checking subscribed tender (OCID: {tender_ocid})")
-                self.sync_single_tender(tender_ocid)
+            for ocid, status in ocids_statuses:
+                if status in finished_tenders_statuses:
+                    self.logger.info(f"Tender OCID {ocid} is finished. Skipping.")
+                    continue
+                self.logger.info(f"Checking tender (OCID: {ocid})")
+                self.sync_single_tender(ocid)
                 processed_count += 1
 
             self.logger.info(
-                f"Finished scheduling sync for subscribed tenders. Scheduled: {processed_count}/{len(subscribed_tender_ocids)}")
+                f"Finished scheduling sync for subscribed tenders. Scheduled: {processed_count}/{len(ocids_statuses)}")
 
         except Exception as e:
             self.logger.error(f"Error during subscribed tender sync: {e}", exc_info=True)
