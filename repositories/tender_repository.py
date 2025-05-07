@@ -35,15 +35,17 @@ class TenderRepository(BaseRepository[Tender]):
             }
         return None
 
-    def get_tenders_short(self) -> List[Dict]:
+    def get_tenders_short(self, page: int, per_page: int) -> Tuple[List[Dict], int]:
         """
-        Fetches all tenders and returns a short representation.
-        :return:
+        Fetches tenders with pagination and returns a short representation.
+        :param page: The current page number.
+        :param per_page: Number of tenders per page.
+        :return: A tuple containing a list of dictionaries with tender information
+                 and the total number of tenders.
         """
-        short_data = (self._session.query(Tender.id, Tender.date_modified, Tender.title)
-                      .order_by(Tender.date_modified.desc())
-                      .limit(50)
-                      .all())
+        query = self._session.query(Tender.id, Tender.date_modified, Tender.title)
+        total = query.count()  # Get total count before pagination
+        short_data = query.offset((page - 1) * per_page).limit(per_page).all()
 
         tenders = []
         for tender in short_data:
@@ -52,7 +54,7 @@ class TenderRepository(BaseRepository[Tender]):
                 'date_modified': tender[1],
                 'title': tender[2]
             })
-        return tenders
+        return tenders, total
 
     def exists_by_id(self, id: str) -> bool:
         """Checks if a tender exists by its ID."""

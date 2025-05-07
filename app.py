@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_migrate import Migrate
 
 from api.auth_routes import init_auth_routes
@@ -31,9 +31,11 @@ migrate = Migrate(app, db)
 
 @app.route('/')
 def index():
+    page = request.args.get('page', 1, type=int)
     tender_repository = TenderRepository(db.session)
-    tenders = tender_repository.get_tenders_short()
-    return render_template('index.html', tenders=tenders)
+    per_page = 9
+    tenders, total = tender_repository.get_tenders_short(page, per_page)
+    return render_template('index.html', tenders=tenders, page=page, per_page=per_page, total=total)
 
 with app.app_context():
     user_repository = UserRepository(db.session)
