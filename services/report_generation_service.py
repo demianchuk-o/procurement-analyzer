@@ -41,11 +41,16 @@ class ReportGenerationService:
         document_changes = self.change_repo.get_changes_since(TenderDocumentChange, tender_id, since_date)
         complaint_changes = self.change_repo.get_changes_since(ComplaintChange, tender_id, since_date)
 
-
-        new_bids = [b for b in tender.bids if hasattr(b, 'date') and b.date and b.date > since_date]
-        new_awards = [a for a in tender.awards if hasattr(a, 'award_date') and a.award_date and a.award_date > since_date]
-        new_documents = [d for d in tender.documents if hasattr(d, 'date_published') and d.date_published and d.date_published > since_date]
-        new_complaints = [c for c in tender.complaints if hasattr(c, 'date_submitted') and c.date_submitted and c.date_submitted > since_date]
+        new_bids = [b for b in tender.bids if
+                    hasattr(b, 'date') and b.date and b.date.replace(tzinfo=None) > since_date]
+        new_awards = [a for a in tender.awards if
+                      hasattr(a, 'award_date') and a.award_date and a.award_date.replace(tzinfo=None) > since_date]
+        new_documents = [d for d in tender.documents if
+                         hasattr(d, 'date_published') and d.date_published and d.date_published.replace(
+                             tzinfo=None) > since_date]
+        new_complaints = [c for c in tender.complaints if
+                          hasattr(c, 'date_submitted') and c.date_submitted and c.date_submitted.replace(
+                              tzinfo=None) > since_date]
 
 
         bid_map = {b.id: b for b in tender.bids}
