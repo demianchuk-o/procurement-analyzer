@@ -35,6 +35,24 @@ class TenderRepository(BaseRepository[Tender]):
             }
         return None
 
+    def get_tenders_short(self) -> List[Dict]:
+        """
+        Fetches all tenders and returns a short representation.
+        :return:
+        """
+        short_data = (self._session.query(Tender.id, Tender.date_modified, Tender.title)
+                      .order_by(Tender.date_modified.desc())
+                      .limit(50)
+                      .all())
+
+        tenders = []
+        for tender in short_data:
+            tenders.append({
+                'tender_id': tender[0],
+                'date_modified': tender[1],
+                'title': tender[2]
+            })
+        return tenders
 
     def exists_by_id(self, id: str) -> bool:
         """Checks if a tender exists by its ID."""
