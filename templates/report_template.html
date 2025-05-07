@@ -18,10 +18,10 @@
     </style>
 </head>
 <body>
-    <h1>Tender Information</h1>
+    <h1>Інформація про тендер:</h1>
     <p>{{ tender_info | e }}</p>
 
-    <h2>Tender Changes</h2>
+    <h2>Зміни в тендері:</h2>
     {% if tender_changes %}
         <ul>
             {% for change in tender_changes %}
@@ -29,7 +29,7 @@
             {% endfor %}
         </ul>
     {% else %}
-        <p>No tender changes.</p>
+        <p>Не зафіксовано змін у тендері.</p>
     {% endif %}
 
     <h2>New Entities</h2>
@@ -37,7 +37,7 @@
     {% for entity_type, entities in new_entities.items() %}
         {% if entities %}
             {% set has_new_entities = true %}
-            <h3>New {{ entity_type.capitalize() | e }}</h3>
+            <h3>Новий об'єкт: {{ entity_type.capitalize() | e }}</h3>
             <ul>
                 {% for entity_info in entities %}
                     <li>{{ entity_info | e }}</li>
@@ -46,18 +46,18 @@
         {% endif %}
     {% endfor %}
     {% if not has_new_entities %}
-         <p>No new entities.</p>
+         <p>Не зафіксовано нових об'єктів.</p>
     {% endif %}
 
-    <h2>Entity Changes</h2>
+    <h2>Зміни в об'єктах тендеру</h2>
     {% set has_entity_changes = false %}
     {% for entity_type, changes_dict in entity_changes.items() %}
          {% if changes_dict %}
              {% set has_entity_changes = true %}
-             <h3>{{ entity_type.capitalize() | e }} Changes</h3>
+             <h3>{{ entity_type.capitalize() | e }} Зміни</h3>
              {% for entity_id, change_data in changes_dict.items() %}
                  <div class='entity-block'>
-                     <h4>Entity: {{ change_data.info | e }}</h4>
+                     <h4>Об'єкт: {{ change_data.info | e }}</h4>
                      {% if change_data.changes %}
                          <ul>
                              {% for change in change_data.changes %}
@@ -65,14 +65,14 @@
                              {% endfor %}
                          </ul>
                      {% else %}
-                         <p>No changes recorded for this entity.</p>
+                         <p>Не відслідковано змін для даного об'єкту.</p>
                      {% endif %}
                  </div>
              {% endfor %}
          {% endif %}
     {% endfor %}
     {% if not has_entity_changes %}
-        <p>No entity changes.</p>
+        <p>Немає відслідкованих змін.</p>
     {% endif %}
 
 </body>
