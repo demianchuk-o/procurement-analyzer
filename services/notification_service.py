@@ -40,7 +40,9 @@ class NotificationService:
             for tender_id, user_emails in tender_user_map.items():
                 logger.info(f"Processing tender ID: {tender_id} for {len(user_emails)} users.")
                 try:
-                    report_data = self.report_generator.generate_tender_report(tender_id, since_date)
+                    report_data = self.report_generator.generate_tender_report(tender_id=tender_id,
+                                                                               new_since=since_date,
+                                                                               changes_since=since_date)
 
                     html_report = self.html_builder.generate_report(report_data)
                     tender_title = report_data.get("tender_info", f"Tender {tender_id}")
