@@ -27,7 +27,7 @@
         <div class="card-body">
           <h5 class="card-title">{{ tender.title[:50] }}{% if tender.title|length > 50 %}...{% endif %}</h5>
           <p class="card-text"><small class="text-muted">Дата: {{ tender.date_modified }}</small></p>
-          <a href="" class="btn btn-primary">Деталі</a>
+          <a href="{{ url_for('tender_detail', tender_id=tender.tender_id) }}" class="btn btn-primary">Деталі</a>
         </div>
       </div>
     </div>
