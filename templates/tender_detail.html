@@ -9,12 +9,12 @@
     <div class="col-auto">
       {% if session.get('user_id') %}
          {% if subscribed %}
-           <form action="{{ url_for('unsubscribe') }}" method="post">
+           <form method="post">
              <input type="hidden" name="tender_id" value="{{ tender.id }}">
              <button type="submit" class="btn btn-danger">Відписатися</button>
            </form>
          {% else %}
-           <form action="{{ url_for('subscribe') }}" method="post">
+           <form method="post">
              <input type="hidden" name="tender_id" value="{{ tender.id }}">
              <button type="submit" class="btn btn-success">Підписатися / Лайкнути</button>
            </form>
@@ -65,7 +65,7 @@
     <div class="card-body">
       {% if tender.documents %}
         <ul class="list-group">
-          {% for doc in tender_documents %}
+          {% for doc in tender.documents %}
             <li class="list-group-item">
               <p><strong>Документ належить до:</strong> {{ doc.document_of }}</p>
               <p><strong>Назва:</strong> {{ doc.title }}</p>
