@@ -1,8 +1,8 @@
 from typing import Tuple, Optional
 
-from flask import Flask, jsonify
+from flask import Flask, Response, redirect, url_for
 from flask_jwt_extended import (
-    JWTManager, create_access_token, unset_jwt_cookies
+    JWTManager, create_access_token, unset_jwt_cookies, set_access_cookies
 )
 
 from models import User
@@ -33,14 +33,15 @@ class AuthService:
         self.user_repository.commit()
         return user
 
-    def login(self, email: str, password: str) -> Optional[Tuple[str, User]]:
+    def login(self, email: str, password: str) -> Optional[Response]:
         user = self.user_repository.get_by_email(email)
         if not user or not self.password_service.check_password(user.password_hash, password):
             return None
-        access_token = create_access_token(identity=email)
-        return access_token, user
 
-    def logout(self):
-        resp = jsonify({'logout': True})
+        access_token = create_access_token(identity=str(user.id))
+        response = redirect(url_for('index'))
+        set_access_cookies(response, access_token)
+        return response
+
+    def logout(self, resp: Response) -> None:
         unset_jwt_cookies(resp)
-        return resp
