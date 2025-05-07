@@ -7,7 +7,7 @@ class ValueSchema(Schema):
 
     amount = fields.Float(allow_none=True)
     currency = fields.Str(allow_none=True)
-    vat_included = fields.Boolean(allow_none=True)
+    vat_included = fields.Boolean(data_key="valueAddedTaxIncluded", allow_none=True)
 
 
 class PeriodSchema(Schema):
