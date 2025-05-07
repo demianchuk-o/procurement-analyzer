@@ -124,6 +124,20 @@
 {% endif %}
 
 
+    <div class="card mb-4">
+        <div class="card-header">Зміни в тендері</div>
+                <div class="card-body">
+                    {% if report_data.tender_changes %}
+                        <ul>
+                            {% for change in report_data.tender_changes %}
+                                <li class='change-item'>{{ format_entity_change(change, 'tenders') | e }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>Не відслідковано змін для даного тендеру.</p>
+                    {% endif %}
+        </div>
+    </div>
   <div class="card mb-4">
     <div class="card-header">Зміни в об'єктах тендеру</div>
     <div class="card-body">
@@ -155,5 +169,4 @@
   </div>
 </div>
 
-</div>
 {% endblock %}
