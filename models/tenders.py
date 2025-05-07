@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, Numeric
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer, Numeric, Boolean
 
 from db import db
 
@@ -13,6 +13,8 @@ class Tender(db.Model):
     date_modified = Column(DateTime(timezone=True), nullable=False)
     title = Column(Text, nullable=False)
     value_amount = Column(Numeric(18, 2))
+    value_currency = Column(String(3))
+    value_vat_included = Column(Boolean)
     status = Column(String)
 
     # periods

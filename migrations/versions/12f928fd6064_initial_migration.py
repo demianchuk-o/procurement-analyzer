@@ -40,6 +40,8 @@ def upgrade():
     sa.Column('title', sa.Text(), nullable=False),
     sa.Column('value_amount', sa.Numeric(precision=18, scale=2), nullable=True),
     sa.Column('status', sa.String(), nullable=True),
+    sa.Column('value_currency', sa.String(length=3), nullable=True),
+    sa.Column('value_vat_included', sa.Boolean(), nullable=True),
     sa.Column('enquiry_period_start_date', sa.DateTime(), nullable=True),
     sa.Column('enquiry_period_end_date', sa.DateTime(), nullable=True),
     sa.Column('tender_period_start_date', sa.DateTime(), nullable=True),
