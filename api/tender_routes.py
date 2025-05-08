@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, session
 
 from repositories.tender_repository import TenderRepository
 from repositories.user_repository import UserRepository
@@ -12,10 +12,10 @@ tender_bp = Blueprint('tender', __name__)
 def init_tender_routes(app):
     @tender_bp.route('/tenders/<tender_id>')
     def tender_detail(tender_id):
-        with session_scope() as session:
-            tender_repository = TenderRepository(session)
-            user_repo = UserRepository(session)
-            report_generation_service = ReportGenerationService(session)
+        with session_scope() as db_session:
+            tender_repository = TenderRepository(db_session)
+            user_repo = UserRepository(db_session)
+            report_generation_service = ReportGenerationService(db_session)
             try:
                 tender = tender_repository.get_by_id(tender_id)
                 if not tender:
@@ -33,7 +33,7 @@ def init_tender_routes(app):
                 return render_template('tender_detail.html', tender=tender, report_data=report_data,
                                        subscribed=subscribed)
             except Exception as e:
-                app.logger.error(f"Error fetching tender details: {e}")
+                app.logger.error(f"Error fetching tender details: {e}", exc_info=True)
                 flash("Сталася помилка при отриманні даних тендеру", "danger")
                 return redirect(url_for('index'))
 
