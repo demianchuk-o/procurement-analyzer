@@ -58,11 +58,24 @@ init_auth_routes(app, auth_service)
 
 @app.route('/')
 def index():
-    page = request.args.get('page', 1, type=int)
-    tender_repository = TenderRepository(db.session)
+    title = request.args.get('title', '').strip()
+    # if searching, always start at page 1
+    page = 1 if title else request.args.get('page', 1, type=int)
     per_page = 18
-    tenders, total = tender_repository.get_tenders_short(page, per_page)
-    return render_template('index.html', tenders=tenders, page=page, per_page=per_page, total=total)
+
+    if title:
+        tenders, total = tender_repository.search_tenders(title, page, per_page)
+    else:
+        tenders, total = tender_repository.get_tenders_short(page, per_page)
+
+    return render_template(
+        'index.html',
+        tenders=tenders,
+        page=page,
+        per_page=per_page,
+        total=total,
+        title_filter=title
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)

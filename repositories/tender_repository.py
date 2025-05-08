@@ -38,6 +38,17 @@ class TenderRepository(BaseRepository[Tender]):
             }
         return None
 
+    def search_tenders(self, title: str, page: int, per_page: int) -> Tuple[List[Dict], int]:
+        query = self._session.query(Tender.id, Tender.date_modified, Tender.title)
+        query = query.filter(Tender.title.ilike(f"%{title}%"))
+        total = query.count()
+        rows = query.offset((page - 1) * per_page).limit(per_page).all()
+        tenders = [
+            {"tender_id": r[0], "date_modified": r[1], "title": r[2]}
+            for r in rows
+        ]
+        return tenders, total
+
     def get_tenders_short(self, page: int, per_page: int) -> Tuple[List[Dict], int]:
         """
         Fetches tenders with pagination and returns a short representation.
