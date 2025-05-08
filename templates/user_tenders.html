@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Улюблені тендери{% endblock %}
+{% block content %}
+<h2>Ваші улюблені тендери</h2>
+<div class="row">
+  {% for tender in tenders %}
+    <div class="col-md-4">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">{{ tender.title[:50] }}{% if tender.title|length > 50 %}...{% endif %}</h5>
+          <p class="card-text"><small class="text-muted">Дата: {{ tender.date_modified }}</small></p>
+          <a href="{{ url_for('tender.tender_detail', tender_id=tender.id) }}" class="btn btn-primary">Деталі</a>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

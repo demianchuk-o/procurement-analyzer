@@ -1,7 +1,9 @@
+from datetime import datetime
 from typing import Any, Callable, Dict, Type
 
 from models.typing import ChangeT
 from models import Bid, Award, TenderDocument, Complaint, Tender
+from util.datetime_utils import format_datetime
 
 from util.field_maps import get_field_map
 
@@ -68,15 +70,28 @@ def get_entity_short_info(entity: Any) -> str:
     # Fallback if no specific formatter is found
     return f"Об'єкт ID: {getattr(entity, 'id', 'N/A')}"
 
-def format_entity_change(change: Dict, entity_type_name: str) -> str:
+def format_entity_change(change, entity_type_name: str) -> str:
     """
-    Formats a change object (dictionary) into a user-friendly string.
+    Formats a change object into a user-friendly string.
     """
-    change_date = change.get('change_date', 'Unknown Date')
-    field = change.get('field_name', 'Unknown Field') # Access 'field_name'
+    change_date = format_datetime(change.change_date)
+    field = change.field_name
 
     field_map = get_field_map(entity_type_name)
     field_name = field_map.get(field, field)  # Use field as default if not found
-    old_value = change.get('old_value', 'N/A') # Access 'old_value'
-    new_value = change.get('new_value', 'N/A') # Access 'new_value'
+    old_value = change.old_value if change.old_value is not None else 'N/A'
+
+    try:
+        old_value = datetime.fromisoformat(old_value)
+        old_value = format_datetime(old_value)
+    except ValueError:
+        pass
+
+    new_value = change.new_value if change.new_value is not None else 'N/A'
+    try:
+        new_value = datetime.fromisoformat(new_value)
+        new_value = format_datetime(new_value)
+    except ValueError:
+        pass
+
     return f"[{change_date}] {field_name}:'{old_value}' -> '{new_value}'"

@@ -10,7 +10,7 @@ class TenderDocument(db.Model):
     tender_id = Column(String(32), ForeignKey('tenders.id'), nullable=False)
     document_of = Column(String)
     title = Column(String)
-    format = Column(String(50))
+    format = Column(String)
     url = Column(Text)
     hash = Column(Text)
     date_published = Column(DateTime(timezone=True))

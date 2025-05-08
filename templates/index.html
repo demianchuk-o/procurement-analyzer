@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Головна{% endblock %}
+{% block content %}
+
+<div class="pagination justify-content-center">
+    <ul class="pagination">
+        {% if page > 1 %}
+            <li class="page-item"><a class="page-link" href="{{ url_for('index', page=page-1) }}">Попередня</a></li>
+        {% endif %}
+
+        {% for page_num in range(1, (total // per_page) + 2) %}
+            <li class="page-item {% if page == page_num %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('index', page=page_num) }}">{{ page_num }}</a>
+            </li>
+        {% endfor %}
+
+        {% if page < (total // per_page) + 1 %}
+            <li class="page-item"><a class="page-link" href="{{ url_for('index', page=page+1) }}">Наступна</a></li>
+        {% endif %}
+    </ul>
+</div>
+
+<div class="row">
+  {% for tender in tenders %}
+    <div class="col-md-4 tender-card">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">{{ tender.title[:50] }}{% if tender.title|length > 50 %}...{% endif %}</h5>
+          <p class="card-text"><small class="text-muted">Дата: {{ format_datetime(tender.date_modified) }}</small></p>
+          <a href="{{ url_for('tender.tender_detail', tender_id=tender.tender_id) }}" class="btn btn-primary">Деталі</a>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

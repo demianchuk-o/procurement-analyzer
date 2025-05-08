@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block title %}Деталі тендеру{% endblock %}
+{% block content %}
+<div class="container my-4">
+  <div class="row align-items-center mb-3">
+    <div class="col">
+      <h2>{{ tender.title }}</h2>
+    </div>
+    <div class="col-auto">
+      {% if session.get('user_id') %}
+         {% if subscribed %}
+           <form method="post" action="{{ url_for('tender.unsubscribe') }}">
+             <input type="hidden" name="tender_id" value="{{ tender.id }}">
+             <button type="submit" class="btn btn-danger">Відписатися</button>
+           </form>
+         {% else %}
+           <form method="post" action="{{ url_for('tender.subscribe') }}">
+             <input type="hidden" name="tender_id" value="{{ tender.id }}">
+             <button type="submit" class="btn btn-success">Підписатися</button>
+           </form>
+         {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">Основна інформація</div>
+    <div class="card-body">
+      <p><strong>ID тендеру:</strong> {{ tender.id }}</p>
+      <p><strong>Дата створення:</strong> {{ format_datetime(tender.date_created) }}</p>
+      <p><strong>Дата модифікації:</strong> {{ format_datetime(tender.date_modified) }}</p>
+        <p><strong>Статус:</strong> {{ tender.status }}</p>
+        <p><strong>Сума:</strong> {{ tender.value_amount }}</p>
+        <p><strong>Валюта:</strong> {{ tender.value_currency }}</p>
+        <p><strong>ПДВ включено:</strong> {% if tender.value_vatIncluded %}Так{% else %}Ні{% endif %}</p>
+
+        {% if tender.enquiry_period_start_date %}<p><strong>Початок періоду запитів:</strong> {{ format_datetime(tender.enquiry_period_start_date) }} </p> {% endif %}
+        {% if tender.enquiry_period_end_date %}<p><strong>Кінець періоду запитів:</strong> {{ format_datetime(tender.enquiry_period_end_date) }} </p> {% endif %}
+        {% if tender.tender_period_start_date %}<p><strong>Початок періоду тендеру:</strong> {{ format_datetime(tender.tender_period_start_date) }} </p> {% endif %}
+        {% if tender.tender_period_end_date %}<p><strong>Кінець періоду тендеру:</strong> {{ format_datetime(tender.tender_period_end_date) }} </p> {% endif %}
+        {% if tender.auction_period_start_date %}<p><strong>Початок аукціону:</strong> {{ format_datetime(tender.auction_period_start_date) }} </p> {% endif %}
+        {% if tender.auction_period_end_date %}<p><strong>Кінець аукціону:</strong> {{ format_datetime(tender.auction_period_end_date) }} </p> {% endif %}
+        {% if tender.award_period_start_date %}<p><strong>Початок періоду визначення переможця:</strong> {{ format_datetime(tender.award_period_start_date) }} </p> {% endif %}
+        {% if tender.award_period_end_date %}<p><strong>Кінець періоду визначення переможця:</strong> {{ format_datetime(tender.award_period_end_date) }} </p> {% endif %}
+        {% if tender.notice_publication_date %}<p><strong>Дата публікації оголошення:</strong> {{ format_datetime(tender.notice_publication_date) }} </p> {% endif %}
+    </div>
+  </div>
+
+{% if tender.violation_score %}
+<div class="card mb-4">
+  <div class="card-header">Бали порушень на основі знайдених ключових слів</div>
+  <div class="card-body">
+    {% set vs = format_violation_scores(tender.violation_score.scores, keyword_field_map) %}
+    {% for name, score in vs.items() %}
+      <p><strong>{{ name }}:</strong> {{ score }}</p>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+  <div class="card mb-4">
+    <div class="card-header">Нагороди</div>
+    <div class="card-body">
+      {% if tender.awards %}
+        <ul class="list-group">
+          {% for award in tender.awards %}
+            <p><strong>Статус:</strong> {{ award.status }}</p>
+            <p><strong>Заголовок:</strong>
+                {% if award.title %} {{ award.title }} {% else %}Не вказано{% endif %}</p>
+            <p><strong>Сума:</strong>
+                {% if award.value_amount %} {{ award.value_amount }} {% else %} Не вказано {% endif %}</p>
+            <p><strong>Дата присудження:</strong>
+                {% if award.award_date %} {{ format_datetime(award.award_date) }} {% else %} Не вказано {% endif %}</p>
+            {% if award.complaint_period_start_date %}<p><strong>Початок періоду оскарження:</strong> {{ format_datetime(award.complaint_period_start_date) }}</p>{% endif %}
+            {% if award.complaint_period_end_date %}<p><strong>Кінець періоду оскарження:</strong> {{ format_datetime(award.complaint_period_end_date) }}</p>{% endif %}
+
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Немає нагород</p>
+      {% endif %}
+    </div>
+  </div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Документи</span>
+    <button
+      class="btn btn-sm btn-outline-secondary"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#docsCollapse"
+      aria-expanded="true"
+      aria-controls="docsCollapse">
+      Згорнути/Розгорнути
+    </button>
+  </div>
+  <div id="docsCollapse" class="collapse show">
+    <div class="card-body">
+      {% if tender.documents %}
+        <ul class="list-group">
+          {% for doc in tender.documents %}
+            <li class="list-group-item">
+              <p><strong>Документ належить до:</strong> {{ doc.document_of }}</p>
+              <p><strong>Назва:</strong> {{ doc.title }}</p>
+              <p><strong>Хеш:</strong> {{ doc.hash }}</p>
+              <p><strong>Формат:</strong> {{ doc.format }}</p>
+              <p><strong>Дата публікації:</strong> {{ format_datetime(doc.date_published) }}</p>
+              <p><strong>Дата зміни:</strong> {{ format_datetime(doc.date_modified) }}</p>
+              <p><a href="{{ doc.url }}" target="_blank">Переглянути документ</a></p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Немає документів</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+  <div class="card mb-4">
+    <div class="card-header">Пропозиції</div>
+    <div class="card-body">
+      {% if tender.bids %}
+        <ul class="list-group">
+          {% for bid in tender.bids %}
+            <li class="list-group-item">
+              <p><strong>Дата подання:</strong> {{ bid.date }}</p>
+                <p><strong>Статус:</strong> {{ bid.status }}</p>
+                <p><strong>Ціна:</strong> {{ bid.value_amount }}</p>
+                <p><strong>Ім'я учасника:</strong> {{ bid.tenderer_legal_name }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Немає пропозицій</p>
+      {% endif %}
+    </div>
+  </div>
+
+
+{% if tender.complaints %}
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Скарги з результатами аналізу</span>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#complaintsCollapse"
+        aria-expanded="true"
+        aria-controls="complaintsCollapse">
+        Згорнути/Розгорнути
+      </button>
+    </div>
+    <div id="complaintsCollapse" class="collapse show">
+      <div class="card-body">
+        {% for comp in tender.complaints %}
+          <div class="mb-3">
+            <div class="mb-3">
+          <p><strong>Заголовок:</strong> {{ comp.title }}</p>
+          <p><strong>Опис:</strong></p>
+          <p>
+            {{ process_complaint_text(comp.description, comp.highlighted_keywords, keyword_field_map) | safe }}
+          </p>
+        </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header">Зміни в тендері</div>
+                <div class="card-body">
+                    {% if report_data.tender_changes %}
+                        <ul>
+                            {% for change in report_data.tender_changes %}
+                                <li class='change-item'>{{ format_entity_change(change, 'tenders') | e }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>Не відслідковано змін для даного тендеру.</p>
+                    {% endif %}
+        </div>
+    </div>
+  <div class="card mb-4">
+    <div class="card-header">Зміни в об'єктах тендеру</div>
+    <div class="card-body">
+      {% set has_entity_changes = false %}
+      {% for entity_type, changes_dict in report_data.entity_changes.items() %}
+        {% if changes_dict %}
+          {% set has_entity_changes = true %}
+          <h5>{{ entity_type.capitalize() | e }} Зміни</h5>
+          {% for entity_id, change_data in changes_dict.items() %}
+            <div class='entity-block'>
+              <h6>Об'єкт: {{ change_data.info | e }}</h6>
+              {% if change_data.changes %}
+                <ul>
+                  {% for change in change_data.changes %}
+                    <li class='change-item'>{{ format_entity_change(change, entity_type) | e }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p>Не відслідковано змін для даного об'єкту.</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+      {% if not has_entity_changes %}
+        <p>Немає відслідкованих змін.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

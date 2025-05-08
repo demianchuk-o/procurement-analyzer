@@ -1,18 +1,18 @@
 import json
 import logging
 import os
-from collections import Counter, defaultdict
+from collections import defaultdict
 from typing import List, Dict
 
 import spacy
 from celery import shared_task
 
-from db import db
+
 from models import Complaint
 from models import ViolationScore
 from repositories.tender_repository import TenderRepository
 from repositories.violation_score_repository import ViolationScoreRepository
-
+from util.db_context_manager import session_scope
 
 @shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
 def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
@@ -20,19 +20,19 @@ def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
     Asynchronous task to analyze a complaint and update the violation score.
     """
     logger = logging.getLogger(__name__)
-    try:
-        violation_score_repo = ViolationScoreRepository(db.session)
-        tender_repo = TenderRepository(db.session)
+    from app import app
+    with app.app_context(), session_scope() as session:
+        try:
+                violation_score_repo = ViolationScoreRepository(session)
+                tender_repo = TenderRepository(session)
 
-        complaint_analysis_service = ComplaintAnalysisService(violation_score_repo)
+                complaint_analysis_service = ComplaintAnalysisService(violation_score_repo)
 
-        complaint = tender_repo.get_complaint_by_id(complaint_id)
-        complaint_analysis_service.update_violation_scores(tender_id, complaint)
-    except Exception as exc:
-        logger.error(f"Error analyzing complaint {complaint_id} for tender {tender_id}: {exc}", exc_info=True)
-        raise
-    finally:
-        db.session.close()
+                complaint = tender_repo.get_complaint_by_id(complaint_id)
+                complaint_analysis_service.update_violation_scores(tender_id, complaint)
+        except Exception as exc:
+            logger.error(f"Error analyzing complaint {complaint_id} for tender {tender_id}: {exc}", exc_info=True)
+            raise
 
 
 class ComplaintAnalysisService:

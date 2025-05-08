@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -17,6 +17,58 @@ class TenderRepository(BaseRepository[Tender]):
 
     def get_by_id(self, id: str) -> Optional[Tender]:
         return self._session.get(Tender, id)
+
+    def get_by_ocid(self, ocid: str) -> Optional[Tender]:
+        return self._session.query(Tender).filter(Tender.ocid == ocid).first()
+
+    def get_short_by_uuid(self, tender_uuid: str) -> Optional[Dict]:
+        """
+        Fetches a tender by its UUID and returns a short representation.
+        :param tender_uuid: UUID of the tender.
+        :return: A dictionary containing the tender ID and date modified.
+        """
+        short_data = self._session.query(Tender.id, Tender.date_modified).filter(
+            Tender.id == tender_uuid
+        ).first()
+
+        if short_data:
+            return {
+                'id': short_data[0],
+                'date_modified': short_data[1]
+            }
+        return None
+
+    def search_tenders(self, title: str, page: int, per_page: int) -> Tuple[List[Dict], int]:
+        query = self._session.query(Tender.id, Tender.date_modified, Tender.title)
+        query = query.filter(Tender.title.ilike(f"%{title}%"))
+        total = query.count()
+        rows = query.offset((page - 1) * per_page).limit(per_page).all()
+        tenders = [
+            {"tender_id": r[0], "date_modified": r[1], "title": r[2]}
+            for r in rows
+        ]
+        return tenders, total
+
+    def get_tenders_short(self, page: int, per_page: int) -> Tuple[List[Dict], int]:
+        """
+        Fetches tenders with pagination and returns a short representation.
+        :param page: The current page number.
+        :param per_page: Number of tenders per page.
+        :return: A tuple containing a list of dictionaries with tender information
+                 and the total number of tenders.
+        """
+        query = self._session.query(Tender.id, Tender.date_modified, Tender.title)
+        total = query.count()  # Get total count before pagination
+        short_data = query.offset((page - 1) * per_page).limit(per_page).all()
+
+        tenders = []
+        for tender in short_data:
+            tenders.append({
+                'tender_id': tender[0],
+                'date_modified': tender[1],
+                'title': tender[2]
+            })
+        return tenders, total
 
     def exists_by_id(self, id: str) -> bool:
         """Checks if a tender exists by its ID."""
@@ -54,23 +106,33 @@ class TenderRepository(BaseRepository[Tender]):
         self._session.flush()
         return new_classification
 
-    def get_subscribed_tender_ocids(self) -> List[str]:
+    def get_tenders_ocid_status(self) -> List[Tuple[str, str]]:
         """
-        Fetches OCIDs of tenders that have user subscriptions.
+        Fetches OCIDs and statuses of tenders as a list of tuples.
         """
-        return [
-            row[0] for row in self._session.query(Tender.ocid)
-            .join(UserSubscription, UserSubscription.tender_id == Tender.id)
-            .filter(Tender.ocid.isnot(None))
-            .distinct()
-            .all()
-        ]
+        return self._session.query(Tender.ocid, Tender.status).filter(
+            Tender.ocid.isnot(None)
+        ).all()
 
     def get_complaint_by_id(self, complaint_id: str) -> Optional[Complaint]:
         """
         Fetches a tender by its complaint ID.
         """
         return self._session.query(Complaint).filter(Complaint.id == complaint_id).first()
+
+    def get_subscribed_tenders(self, user_id: int) -> list[Tender]:
+        """
+        Fetches all tenders that a user is subscribed to.
+        :param user_id: ID of the user.
+        :return: A list of tenders the user is subscribed to.
+        """
+        return (
+            self._session
+            .query(Tender)
+            .join(UserSubscription, Tender.id == UserSubscription.tender_id)
+            .filter(UserSubscription.user_id == user_id)
+            .all()
+        )
 
     def get_modified_tenders_and_subscribed_users(self, since_date: datetime) -> Dict[str, List[str]]:
         """

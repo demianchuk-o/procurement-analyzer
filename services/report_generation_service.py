@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Optional
 
 from sqlalchemy.orm import Session
 
@@ -20,12 +20,13 @@ class ReportGenerationService:
         self.change_repo = ChangeRepository(session)
         self.tender_repo = TenderRepository(session)
 
-    def generate_tender_report(self, tender_id: str, since_date: datetime) -> Dict:
+    def generate_tender_report(self, tender_id: str, new_since: datetime,
+                               changes_since: Optional[datetime] = None) -> Dict:
         """
         Generates a structured report dictionary for a specific tender, focusing on
         new entities and changes since a given date.
         """
-        logger.info(f"Generating report for tender {tender_id} since {since_date}")
+        logger.info(f"Generating report for tender {tender_id} since {new_since}")
 
         tender = self.tender_repo.get_tender_with_relations(tender_id)
 
@@ -35,17 +36,22 @@ class ReportGenerationService:
             logger.warning(f"Tender with ID {tender_id} not found.")
             raise ValueError(f"Tender with ID {tender_id} not found.")
 
-        tender_changes = self.change_repo.get_changes_since(TenderChange, tender_id, since_date)
-        bid_changes = self.change_repo.get_changes_since(BidChange, tender_id, since_date)
-        award_changes = self.change_repo.get_changes_since(AwardChange, tender_id, since_date)
-        document_changes = self.change_repo.get_changes_since(TenderDocumentChange, tender_id, since_date)
-        complaint_changes = self.change_repo.get_changes_since(ComplaintChange, tender_id, since_date)
+        tender_changes = self.change_repo.get_changes_since(TenderChange, tender_id, changes_since)
+        bid_changes = self.change_repo.get_changes_since(BidChange, tender_id, changes_since)
+        award_changes = self.change_repo.get_changes_since(AwardChange, tender_id, changes_since)
+        document_changes = self.change_repo.get_changes_since(TenderDocumentChange, tender_id, changes_since)
+        complaint_changes = self.change_repo.get_changes_since(ComplaintChange, tender_id, changes_since)
 
-
-        new_bids = [b for b in tender.bids if hasattr(b, 'date') and b.date and b.date > since_date]
-        new_awards = [a for a in tender.awards if hasattr(a, 'award_date') and a.award_date and a.award_date > since_date]
-        new_documents = [d for d in tender.documents if hasattr(d, 'date_published') and d.date_published and d.date_published > since_date]
-        new_complaints = [c for c in tender.complaints if hasattr(c, 'date_submitted') and c.date_submitted and c.date_submitted > since_date]
+        new_bids = [b for b in tender.bids if
+                    hasattr(b, 'date') and b.date and b.date.replace(tzinfo=None) > new_since]
+        new_awards = [a for a in tender.awards if
+                      hasattr(a, 'award_date') and a.award_date and a.award_date.replace(tzinfo=None) > new_since]
+        new_documents = [d for d in tender.documents if
+                         hasattr(d, 'date_published') and d.date_published and d.date_published.replace(
+                             tzinfo=None) > new_since]
+        new_complaints = [c for c in tender.complaints if
+                          hasattr(c, 'date_submitted') and c.date_submitted and c.date_submitted.replace(
+                              tzinfo=None) > new_since]
 
 
         bid_map = {b.id: b for b in tender.bids}

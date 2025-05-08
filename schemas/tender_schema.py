@@ -26,6 +26,8 @@ class TenderSchema(Schema):
         value = data.pop('value', None)
         if value:
             data['value_amount'] = value.get('amount')
+            data['value_currency'] = value.get('currency')
+            data['value_vat_included'] = value.get('vatIncluded')
 
         enquiry_period = data.pop('enquiry_period', None)
         if enquiry_period:

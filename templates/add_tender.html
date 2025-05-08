@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Додати тендер{% endblock %}
+{% block content %}
+<h2>Додати тендер</h2>
+<form method="post" action="{{ url_for('tender.add_tender') }}">
+  <div class="mb-3">
+    <label for="tender_id" class="form-label">Ідентифікатор тендеру (OCID)</label>
+    <input type="text" class="form-control" id="tender_ocid" name="tender_ocid" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Додати</button>
+</form>
+{% endblock %}

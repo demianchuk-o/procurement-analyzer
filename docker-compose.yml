@@ -36,7 +36,7 @@ services:
 
   celery:
     build: .
-    command: celery -A celery_app worker --loglevel=INFO
+    command: celery -A celery_app worker --loglevel=INFO --beat
     depends_on:
       web:
         condition: service_started

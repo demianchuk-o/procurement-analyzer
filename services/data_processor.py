@@ -2,8 +2,11 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Type
 
+from celery import shared_task
 from marshmallow import Schema
 
+
+from api.legacy_prozorro_client import LegacyProzorroClient
 from models import (TenderChange, TenderDocument, TenderDocumentChange, Award, AwardChange,
                     Bid, BidChange, Complaint, ComplaintChange)
 from models.typing import ChangeT, EntityT
@@ -15,11 +18,42 @@ from schemas.tender_document_schema import TenderDocumentSchema
 from schemas.tender_schema import TenderSchema
 
 from services.complaint_analysis_service import analyze_complaint_and_update_score
+from util.db_context_manager import session_scope
+
+
+@shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
+def process_tender_data_task(tender_uuid: str,
+                            tender_ocid: Optional[str],
+                            date_modified_utc: datetime,
+                            general_classifier_id: Optional[int]) -> None:
+    """
+    Celery task to process tender data.
+    """
+    logger = logging.getLogger(__name__)
+    from app import app
+    with app.app_context(), session_scope() as session:
+        try:
+            tender_repo = TenderRepository(session)
+            data_processor = DataProcessor(tender_repo)
+
+            data_processor.process_tender_data(
+                tender_uuid=tender_uuid,
+                tender_ocid=tender_ocid,
+                date_modified_utc=date_modified_utc,
+                general_classifier_id=general_classifier_id,
+            )
+
+            logger.info(f"Successfully processed tender UUID {tender_uuid}")
+
+        except Exception as e:
+            logger.error(f"Error processing tender UUID {tender_uuid}: {e}", exc_info=True)
+            raise
 
 class DataProcessor:
     def __init__(self, tender_repo: TenderRepository) -> None:
         self.logger = logging.getLogger(type(self).__name__)
         self.tender_repo = tender_repo
+        self.legacy_client = LegacyProzorroClient()
 
         self.tender_schema = TenderSchema()
         self.tender_document_schema = TenderDocumentSchema()
@@ -197,13 +231,17 @@ class DataProcessor:
                             tender_uuid: str,
                             tender_ocid: Optional[str],
                             date_modified_utc: datetime,
-                            general_classifier_id: Optional[int],
-                            legacy_details: Dict[str, Any]) -> bool:
+                            general_classifier_id: Optional[int]) -> bool:
         """
         Processes the full legacy tender data, updates DB, and records changes.
         Manages its own transaction within the provided session.
         """
         self.logger.info(f"Processing tender UUID {tender_uuid} (OCID: {tender_ocid})")
+
+        legacy_details = self.legacy_client.fetch_tender_details(tender_uuid)
+        if not legacy_details:
+            self.logger.warning(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
+            raise Exception(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
 
         if not tender_uuid:
             self.logger.error("Tender UUID is missing, cannot process.")
