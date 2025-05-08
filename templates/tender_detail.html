@@ -124,8 +124,7 @@
           <p><strong>Заголовок:</strong> {{ comp.title }}</p>
           <p><strong>Опис:</strong></p>
         <p>
-            {{ process_complaint_text(comp.description,
-            comp.highlighted_keywords, keyword_field_map) }}
+            {{ process_complaint_text(comp.description, comp.highlighted_keywords, keyword_field_map) | safe }}
         </p>
 
         </div>
