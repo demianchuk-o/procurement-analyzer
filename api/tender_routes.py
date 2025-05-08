@@ -79,12 +79,6 @@ def init_tender_routes(app,
             flash(str(e), 'danger')
         return redirect(url_for('tender.tender_detail', tender_id=tender_id))
 
-    @tender_bp.route('/user_tenders')
-    def user_tenders():
-        user_id = session.get('user_id')
-        subs = user_repository.find_subscriptions(user_id)
-        tenders = [tender_repository.get_by_id(s.tender_id) for s in subs]
-        return render_template('user_tenders.html', tenders=tenders)
 
 
     app.register_blueprint(tender_bp, url_prefix='/tender')

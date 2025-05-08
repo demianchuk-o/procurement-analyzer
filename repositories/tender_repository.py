@@ -120,6 +120,20 @@ class TenderRepository(BaseRepository[Tender]):
         """
         return self._session.query(Complaint).filter(Complaint.id == complaint_id).first()
 
+    def get_subscribed_tenders(self, user_id: int) -> list[Tender]:
+        """
+        Fetches all tenders that a user is subscribed to.
+        :param user_id: ID of the user.
+        :return: A list of tenders the user is subscribed to.
+        """
+        return (
+            self._session
+            .query(Tender)
+            .join(UserSubscription, Tender.id == UserSubscription.tender_id)
+            .filter(UserSubscription.user_id == user_id)
+            .all()
+        )
+
     def get_modified_tenders_and_subscribed_users(self, since_date: datetime) -> Dict[str, List[str]]:
         """
         Fetches IDs of tenders modified since a given date and the emails

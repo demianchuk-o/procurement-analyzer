@@ -77,5 +77,13 @@ def index():
         title_filter=title
     )
 
+@app.route('/user_tenders')
+def user_tenders():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('auth.login'))
+    tenders = tender_repository.get_subscribed_tenders(user_id)
+    return render_template('user_tenders.html', tenders=tenders)
+
 if __name__ == '__main__':
     app.run(debug=True)
