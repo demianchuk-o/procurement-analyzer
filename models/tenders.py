@@ -45,7 +45,8 @@ class Tender(db.Model):
                               order_by="TenderChange.change_date",
                               cascade="all, delete-orphan")
     violation_score = db.relationship("ViolationScore", back_populates="tender",
-                                     cascade="all, delete-orphan")
+                                      uselist=False,
+                                      cascade="all, delete-orphan")
 
 
 class TenderChange(db.Model):
