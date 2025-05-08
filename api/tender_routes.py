@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, redirect, url_for, flash, session, request
 
+from services.user_service import UserService
+
 tender_bp = Blueprint('tender', __name__)
 
 def init_tender_routes(app,
@@ -9,6 +11,7 @@ def init_tender_routes(app,
                        user_repository,
                        report_generation_service,
                        crawler_service):
+    user_service = UserService(user_repository, tender_repository)
     @tender_bp.route('/tenders/<tender_id>')
     def tender_detail(tender_id):
         try:
@@ -53,6 +56,35 @@ def init_tender_routes(app,
             app.logger.error(f"Error adding tender: {e}", exc_info=True)
             flash(f"Не вдалося завантажити тендер {tender_ocid}", "danger")
             return redirect(url_for('index'))
+
+    @tender_bp.route('/subscribe', methods=['POST'])
+    def subscribe():
+        user_id = session.get('user_id')
+        tender_id = request.form['tender_id']
+        try:
+            user_service.subscribe_to_tender(user_id, tender_id)
+            flash('Підписано на тендер', 'success')
+        except ValueError as e:
+            flash(str(e), 'danger')
+        return redirect(url_for('tender.tender_detail', tender_id=tender_id))
+
+    @tender_bp.route('/unsubscribe', methods=['POST'])
+    def unsubscribe():
+        user_id = session.get('user_id')
+        tender_id = request.form['tender_id']
+        try:
+            user_service.unsubscribe_from_tender(user_id, tender_id)
+            flash('Відписано від тендеру', 'success')
+        except ValueError as e:
+            flash(str(e), 'danger')
+        return redirect(url_for('tender.tender_detail', tender_id=tender_id))
+
+    @tender_bp.route('/user_tenders')
+    def user_tenders():
+        user_id = session.get('user_id')
+        subs = user_repository.find_subscriptions(user_id)
+        tenders = [tender_repository.get_by_id(s.tender_id) for s in subs]
+        return render_template('user_tenders.html', tenders=tenders)
 
 
     app.register_blueprint(tender_bp, url_prefix='/tender')

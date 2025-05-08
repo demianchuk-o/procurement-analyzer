@@ -9,12 +9,12 @@
     <div class="col-auto">
       {% if session.get('user_id') %}
          {% if subscribed %}
-           <form method="post">
+           <form method="post" action="{{ url_for('tender.unsubscribe') }}">
              <input type="hidden" name="tender_id" value="{{ tender.id }}">
              <button type="submit" class="btn btn-danger">Відписатися</button>
            </form>
          {% else %}
-           <form method="post">
+           <form method="post" action="{{ url_for('tender.subscribe') }}">
              <input type="hidden" name="tender_id" value="{{ tender.id }}">
              <button type="submit" class="btn btn-success">Підписатися</button>
            </form>
