@@ -27,6 +27,7 @@ app.config.from_object(Config)
 app.jinja_env.filters['process_text'] = process_complaint_text
 app.jinja_env.globals['keyword_field_map'] = KEYWORD_FIELD_MAP
 app.jinja_env.globals['format_entity_change'] = format_entity_change
+app.jinja_env.globals['format_datetime'] = lambda dt: dt.strftime('%Y-%m-%d %H:%M:%S') if dt else None
 
 db.init_app(app)
 

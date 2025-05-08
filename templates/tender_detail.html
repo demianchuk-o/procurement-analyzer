@@ -27,8 +27,8 @@
     <div class="card-header">Основна інформація</div>
     <div class="card-body">
       <p><strong>ID тендеру:</strong> {{ tender.id }}</p>
-      <p><strong>Дата створення:</strong> {{ tender.date_created }}</p>
-      <p><strong>Дата модифікації:</strong> {{ tender.date_modified }}</p>
+      <p><strong>Дата створення:</strong> {{ format_datetime(tender.date_created) }}</p>
+      <p><strong>Дата модифікації:</strong> {{ format_datetime(tender.date_modified) }}</p>
         <p><strong>Статус:</strong> {{ tender.status }}</p>
         <p><strong>Сума:</strong> {{ tender.value_amount }}</p>
         <p><strong>Валюта:</strong> {{ tender.value_currency }}</p>
@@ -46,11 +46,14 @@
         <ul class="list-group">
           {% for award in tender.awards %}
             <p><strong>Статус:</strong> {{ award.status }}</p>
-            <p><strong>Заголовок:</strong> {{ award.title }}</p>
-            <p><strong>Сума:</strong> {{ award.value_amount }}</p>
-            <p><strong>Дата присудження:</strong> {{ award.award_date }}</p>
-            <p><strong>Початок періоду оскарження:</strong> {{ award.complaint_period_start_date }}</p>
-            <p><strong>Кінець періоду оскарження:</strong> {{ award.complaint_period_end_date }}</p>
+            <p><strong>Заголовок:</strong>
+                {% if award.title %} {{ award.title }} {% else %}Не вказано{% endif %}</p>
+            <p><strong>Сума:</strong>
+                {% if award.value_amount %} {{ award.value_amount }} {% else %} Не вказано {% endif %}</p>
+            <p><strong>Дата присудження:</strong>
+                {% if award.award_date %} {{ format_datetime(award.award_date) }} {% else %} Не вказано {% endif %}</p>
+            <p><strong>Початок періоду оскарження:</strong> {{ format_datetime(award.complaint_period_start_date) }}</p>
+            <p><strong>Кінець періоду оскарження:</strong> {{ format_datetime(award.complaint_period_end_date) }}</p>
 
           {% endfor %}
         </ul>
@@ -71,8 +74,8 @@
               <p><strong>Назва:</strong> {{ doc.title }}</p>
               <p><strong>Хеш:</strong> {{ doc.hash }}</p>
               <p><strong>Формат:</strong> {{ doc.format }}</p>
-              <p><strong>Дата публікації:</strong> {{ doc.date_published }}</p>
-              <p><strong>Дата зміни:</strong> {{ doc.date_modified }}</p>
+              <p><strong>Дата публікації:</strong> {{ format_datetime(doc.date_published) }}</p>
+              <p><strong>Дата зміни:</strong> {{ format_datetime(doc.date_modified) }}</p>
               <p><a href="{{ doc.url }}" target="_blank">Переглянути документ</a></p>
             </li>
           {% endfor %}
