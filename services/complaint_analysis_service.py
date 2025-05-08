@@ -1,14 +1,13 @@
 import json
 import logging
 import os
-from collections import Counter, defaultdict
+from collections import defaultdict
 from typing import List, Dict
 
 import spacy
 from celery import shared_task
 
-from app import app
-from db import db
+
 from models import Complaint
 from models import ViolationScore
 from repositories.tender_repository import TenderRepository
@@ -21,9 +20,9 @@ def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
     Asynchronous task to analyze a complaint and update the violation score.
     """
     logger = logging.getLogger(__name__)
-    with app.app_context():
+    from app import app
+    with app.app_context(), session_scope() as session:
         try:
-            with session_scope() as session:
                 violation_score_repo = ViolationScoreRepository(session)
                 tender_repo = TenderRepository(session)
 

@@ -1,3 +1,4 @@
+# app.py
 from datetime import datetime, timezone, timedelta
 
 from flask import Flask, render_template, request, session
@@ -35,6 +36,25 @@ import models
 
 migrate = Migrate(app, db)
 
+
+user_repository = UserRepository(db.session)
+tender_repository = TenderRepository(db.session)
+report_generation_service = ReportGenerationService(db.session)
+password_service = PasswordService()
+auth_service = AuthService(app, user_repository, password_service)
+
+
+
+# Move CrawlerService import and initialization here
+def init_crawler_service():
+    from services.crawler_service import CrawlerService
+    crawler_service = CrawlerService(tender_repository)
+    return crawler_service
+
+init_tender_routes(app, tender_repository, user_repository, report_generation_service,
+                   init_crawler_service())
+init_auth_routes(app, auth_service)
+
 @app.route('/')
 def index():
     page = request.args.get('page', 1, type=int)
@@ -42,17 +62,6 @@ def index():
     per_page = 18
     tenders, total = tender_repository.get_tenders_short(page, per_page)
     return render_template('index.html', tenders=tenders, page=page, per_page=per_page, total=total)
-
-
-
-with app.app_context():
-    user_repository = UserRepository(db.session)
-    password_service = PasswordService()
-    auth_service = AuthService(app, user_repository, password_service)
-
-
-    init_auth_routes(app, auth_service)
-    init_tender_routes(app)
 
 if __name__ == '__main__':
     app.run(debug=True)

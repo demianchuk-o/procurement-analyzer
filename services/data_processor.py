@@ -5,7 +5,6 @@ from typing import List, Dict, Any, Optional, Type
 from celery import shared_task
 from marshmallow import Schema
 
-from app import app
 
 from api.legacy_prozorro_client import LegacyProzorroClient
 from models import (TenderChange, TenderDocument, TenderDocumentChange, Award, AwardChange,
@@ -31,6 +30,7 @@ def process_tender_data_task(tender_uuid: str,
     Celery task to process tender data.
     """
     logger = logging.getLogger(__name__)
+    from app import app
     with app.app_context(), session_scope() as session:
         try:
             tender_repo = TenderRepository(session)
