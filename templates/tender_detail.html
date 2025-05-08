@@ -80,8 +80,20 @@
     </div>
   </div>
 
-  <div class="card mb-4">
-    <div class="card-header">Документи</div>
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Документи</span>
+    <button
+      class="btn btn-sm btn-outline-secondary"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#docsCollapse"
+      aria-expanded="true"
+      aria-controls="docsCollapse">
+      Згорнути/Розгорнути
+    </button>
+  </div>
+  <div id="docsCollapse" class="collapse show">
     <div class="card-body">
       {% if tender.documents %}
         <ul class="list-group">
@@ -102,7 +114,7 @@
       {% endif %}
     </div>
   </div>
-
+</div>
   <div class="card mb-4">
     <div class="card-header">Пропозиції</div>
     <div class="card-body">
@@ -126,22 +138,35 @@
 
 {% if tender.complaints %}
   <div class="card mb-4">
-    <div class="card-header">Скарги з результатами аналізу</div>
-    <div class="card-body">
-      {% for comp in tender.complaints %}
-        <div class="mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Скарги з результатами аналізу</span>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#complaintsCollapse"
+        aria-expanded="true"
+        aria-controls="complaintsCollapse">
+        Згорнути/Розгорнути
+      </button>
+    </div>
+    <div id="complaintsCollapse" class="collapse show">
+      <div class="card-body">
+        {% for comp in tender.complaints %}
+          <div class="mb-3">
+            <div class="mb-3">
           <p><strong>Заголовок:</strong> {{ comp.title }}</p>
           <p><strong>Опис:</strong></p>
-        <p>
+          <p>
             {{ process_complaint_text(comp.description, comp.highlighted_keywords, keyword_field_map) | safe }}
-        </p>
-
+          </p>
         </div>
-      {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 {% endif %}
-
 
     <div class="card mb-4">
         <div class="card-header">Зміни в тендері</div>
