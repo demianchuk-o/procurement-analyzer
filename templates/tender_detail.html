@@ -34,7 +34,15 @@
         <p><strong>Валюта:</strong> {{ tender.value_currency }}</p>
         <p><strong>ПДВ включено:</strong> {% if tender.value_vatIncluded %}Так{% else %}Ні{% endif %}</p>
 
-
+        {% if tender.enquiry_period_start_date %}<p><strong>Початок періоду запитів:</strong> {{ format_datetime(tender.enquiry_period_start_date) }} </p> {% endif %}
+        {% if tender.enquiry_period_end_date %}<p><strong>Кінець періоду запитів:</strong> {{ format_datetime(tender.enquiry_period_end_date) }} </p> {% endif %}
+        {% if tender.tender_period_start_date %}<p><strong>Початок періоду тендеру:</strong> {{ format_datetime(tender.tender_period_start_date) }} </p> {% endif %}
+        {% if tender.tender_period_end_date %}<p><strong>Кінець періоду тендеру:</strong> {{ format_datetime(tender.tender_period_end_date) }} </p> {% endif %}
+        {% if tender.auction_period_start_date %}<p><strong>Початок аукціону:</strong> {{ format_datetime(tender.auction_period_start_date) }} </p> {% endif %}
+        {% if tender.auction_period_end_date %}<p><strong>Кінець аукціону:</strong> {{ format_datetime(tender.auction_period_end_date) }} </p> {% endif %}
+        {% if tender.award_period_start_date %}<p><strong>Початок періоду визначення переможця:</strong> {{ format_datetime(tender.award_period_start_date) }} </p> {% endif %}
+        {% if tender.award_period_end_date %}<p><strong>Кінець періоду визначення переможця:</strong> {{ format_datetime(tender.award_period_end_date) }} </p> {% endif %}
+        {% if tender.notice_publication_date %}<p><strong>Дата публікації оголошення:</strong> {{ format_datetime(tender.notice_publication_date) }} </p> {% endif %}
     </div>
   </div>
 
@@ -52,8 +60,8 @@
                 {% if award.value_amount %} {{ award.value_amount }} {% else %} Не вказано {% endif %}</p>
             <p><strong>Дата присудження:</strong>
                 {% if award.award_date %} {{ format_datetime(award.award_date) }} {% else %} Не вказано {% endif %}</p>
-            <p><strong>Початок періоду оскарження:</strong> {{ format_datetime(award.complaint_period_start_date) }}</p>
-            <p><strong>Кінець періоду оскарження:</strong> {{ format_datetime(award.complaint_period_end_date) }}</p>
+            {% if award.complaint_period_start_date %}<p><strong>Початок періоду оскарження:</strong> {{ format_datetime(award.complaint_period_start_date) }}</p>{% endif %}
+            {% if award.complaint_period_end_date %}<p><strong>Кінець періоду оскарження:</strong> {{ format_datetime(award.complaint_period_end_date) }}</p>{% endif %}
 
           {% endfor %}
         </ul>
