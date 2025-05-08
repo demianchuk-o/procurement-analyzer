@@ -46,6 +46,15 @@
     </div>
   </div>
 
+<div class="card mb-4">
+  <div class="card-header">Бали порушень на основі знайдених ключових слів</div>
+  <div class="card-body">
+    {% set vs = format_violation_scores(tender.violation_score.scores, keyword_field_map) %}
+    {% for name, score in vs.items() %}
+      <p><strong>{{ name }}:</strong> {{ score }}</p>
+    {% endfor %}
+  </div>
+</div>
 
   <div class="card mb-4">
     <div class="card-header">Нагороди</div>

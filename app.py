@@ -15,7 +15,7 @@ from services.auth_service import AuthService
 from services.password_service import PasswordService
 from services.report_generation_service import ReportGenerationService
 
-from util.complaint_text_render import process_complaint_text
+from util.complaint_text_render import process_complaint_text, format_violation_scores
 from util.field_maps import KEYWORD_FIELD_MAP
 from util.report_helpers import format_entity_change
 
@@ -26,6 +26,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 app.jinja_env.globals['process_complaint_text'] = process_complaint_text
+app.jinja_env.globals['format_violation_scores'] = format_violation_scores
 app.jinja_env.globals['keyword_field_map'] = KEYWORD_FIELD_MAP
 app.jinja_env.globals['format_entity_change'] = format_entity_change
 app.jinja_env.globals['format_datetime'] = lambda dt: dt.strftime('%Y-%m-%d %H:%M:%S') if dt else None
