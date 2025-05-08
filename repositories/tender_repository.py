@@ -18,6 +18,9 @@ class TenderRepository(BaseRepository[Tender]):
     def get_by_id(self, id: str) -> Optional[Tender]:
         return self._session.get(Tender, id)
 
+    def get_by_ocid(self, ocid: str) -> Optional[Tender]:
+        return self._session.query(Tender).filter(Tender.ocid == ocid).first()
+
     def get_short_by_uuid(self, tender_uuid: str) -> Optional[Dict]:
         """
         Fetches a tender by its UUID and returns a short representation.
