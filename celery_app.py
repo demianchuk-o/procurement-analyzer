@@ -17,6 +17,8 @@ app = Celery(
 )
 app.config_from_object('celeryconfig')
 
+import signals
+
 app.conf.task_queues = (
     Queue('default', routing_key='default'),
     Queue('heavy',   routing_key='heavy'),

@@ -8,6 +8,7 @@ import spacy
 from celery_app import app as celery_app
 import math
 
+from exceptions import NlpModelNotAvailableError, NlpResourcesNotAvailableError
 from models import Complaint
 from models import ViolationScore
 from repositories.tender_repository import TenderRepository
@@ -15,7 +16,7 @@ from repositories.violation_score_repository import ViolationScoreRepository
 from util.db_context_manager import session_scope
 
 
-@celery_app.task(rate_limit='10/m', autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
+@celery_app.task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
 def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
     """
     Asynchronous task to analyze a complaint and update the violation score.
@@ -37,28 +38,22 @@ def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
 
 
 class ComplaintAnalysisService:
-    def __init__(self, violation_score_repo: ViolationScoreRepository,
-                 keywords_path: str = '../keywords.json',
-                 spacy_model: str = "uk_core_news_sm"):
+    def __init__(self, violation_score_repo: ViolationScoreRepository):
+        from signals import NLP_MODEL, LEMMATIZED_KEYWORDS
+
+        self.logger = logging.getLogger(__name__)
         self.violation_score_repo = violation_score_repo
-        self.logger = logging.getLogger(type(self).__name__)
-        self.nlp = spacy.load(spacy_model, disable=["parser", "ner"])
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        full_keywords_path = os.path.join(script_dir, keywords_path)
-        self.keywords = self._load_keywords(full_keywords_path)
-        self.lemmatized_keywords = self._lemmatize_keywords(self.keywords)
+        self.nlp = NLP_MODEL
+        self.lemmatized_keywords = LEMMATIZED_KEYWORDS
 
-    def _load_keywords(self, keywords_path: str) -> Dict:
-        """Loads keywords from a JSON file."""
-        with open(keywords_path, 'r', encoding='utf-8') as file:
-            return json.load(file)
+        if not self.nlp:
+            self.logger.critical("CRITICAL: SpaCy model not available. ComplaintAnalysisService cannot function.")
+            raise NlpModelNotAvailableError("SpaCy model (NLP_MODEL) is not loaded.")
+        if not self.lemmatized_keywords:
+            self.logger.critical(
+                "CRITICAL: Lemmatized keywords not available. ComplaintAnalysisService functionality limited.")
+            raise NlpResourcesNotAvailableError("Lemmatized keywords are not loaded.")
 
-    def _lemmatize_keywords(self, keywords: Dict) -> Dict[str, List[str]]:
-        """Lemmatizes keywords using spaCy."""
-        lemmatized_keywords = {}
-        for domain, words in keywords.items():
-            lemmatized_keywords[domain] = [self.nlp(word)[0].lemma_ for word in words]
-        return lemmatized_keywords
 
     def analyze_complaint_text(self, complaint_text: str) -> List[Dict]:
         """Analyzes complaint text using spaCy lemmatization and returns highlighted keywords."""
