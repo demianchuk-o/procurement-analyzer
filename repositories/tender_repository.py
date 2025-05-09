@@ -100,11 +100,33 @@ class TenderRepository(BaseRepository[Tender]):
         ).first()
 
     def create_general_classifier(self, scheme: str, description: str) -> GeneralClassifier:
-        """Creates a new GeneralClassifier."""
+        """Creates a new GeneralClassifier. Commit is handled by the caller."""
         new_classification = GeneralClassifier(scheme=scheme, description=description)
         self._session.add(new_classification)
-        self._session.flush()
+
         return new_classification
+
+    def get_or_create_general_classifier_id(self, classifier_data: Optional[dict]) -> Optional[int]:
+        if not classifier_data:
+            return None
+
+        scheme = classifier_data.get('scheme')
+        description = classifier_data.get('description')
+        if not scheme or not description:
+            return None
+
+        classification = self.find_general_classifier(scheme=scheme, description=description)
+
+        if classification:
+            # flush if its a newly added classifier
+            if not classification.id:
+                self._session.flush()
+            return classification.id
+        else:
+            new_classification = self.create_general_classifier(scheme=scheme, description=description)
+            # flush to get the ID for the new classification
+            self._session.flush()
+            return new_classification.id
 
     def get_tenders_ocid_status(self) -> List[Tuple[str, str]]:
         """

@@ -46,13 +46,12 @@ class CrawlerService:
                     f"Tender UUID {tender_uuid} (OCID {tender_ocid}) is up to date. No sync needed.")
                 return
 
-            general_classifier_id = self._find_or_create_general_classifier(classifier_data)
 
             process_tender_data_task.delay(
                 tender_uuid=tender_uuid,
                 tender_ocid=tender_ocid,
                 date_modified_utc=date_modified_utc,
-                general_classifier_id=general_classifier_id
+                classifier_data=classifier_data,
             )
 
             self.logger.info(f"Scheduled data processing task for tender UUID {tender_uuid}")
@@ -117,25 +116,3 @@ class CrawlerService:
         self.logger.info(f"Crawl finished. Found {total_ocids_found} OCIDs across {pages_to_crawl} page(s). "
                          f"Scheduled processing for: {processed_count}")
         return processed_count
-
-    def _find_or_create_general_classifier(self, classifier_data: dict) -> Optional[int]:
-        """Finds or creates a GeneralClassifier record and returns its ID."""
-        if not classifier_data:
-            return None
-
-        scheme = classifier_data.get('scheme')
-        description = classifier_data.get('description')
-        if not scheme or not description:
-             self.logger.warning("Missing scheme or description in classifier data")
-             return None
-
-
-        classification = self.tender_repo.find_general_classifier(scheme=scheme, description=description)
-
-        if classification:
-            return classification.id
-        else:
-            new_classification = self.tender_repo.create_general_classifier(scheme=scheme, description=description)
-            self.logger.info(f"Prepared new GeneralClassifier: ID {new_classification.id}, Scheme: {scheme}")
-            return new_classification.id
-

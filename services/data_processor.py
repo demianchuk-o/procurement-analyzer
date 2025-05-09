@@ -27,7 +27,7 @@ from util.db_context_manager import session_scope
 def process_tender_data_task(tender_uuid: str,
                             tender_ocid: Optional[str],
                             date_modified_utc: datetime,
-                            general_classifier_id: Optional[int]) -> None:
+                             classifier_data: Optional[Dict[str,str]]) -> None:
     """
     Celery task to process tender data.
     """
@@ -37,6 +37,12 @@ def process_tender_data_task(tender_uuid: str,
         try:
             tender_repo = TenderRepository(session)
             data_processor = DataProcessor(tender_repo)
+
+            general_classifier_id = tender_repo.get_or_create_general_classifier_id(classifier_data)
+            if classifier_data and not general_classifier_id:
+                logger.warning(
+                    f"Could not obtain general_classifier_id for tender UUID {tender_uuid} with data: {classifier_data}")
+
 
             data_processor.process_tender_data(
                 tender_uuid=tender_uuid,
