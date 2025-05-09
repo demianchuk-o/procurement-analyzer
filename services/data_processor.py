@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional, Type
+from typing import List, Dict, Any, Optional, Type, Tuple
 
-from celery import shared_task
+from celery_app import app as celery_app
 from marshmallow import Schema
 
 
@@ -21,7 +21,9 @@ from services.complaint_analysis_service import analyze_complaint_and_update_sco
 from util.db_context_manager import session_scope
 
 
-@shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
+@celery_app.task(queue="default", 
+                 autoretry_for=(Exception,), 
+                 retry_kwargs={'max_retries': 3})
 def process_tender_data_task(tender_uuid: str,
                             tender_ocid: Optional[str],
                             date_modified_utc: datetime,
@@ -60,7 +62,7 @@ class DataProcessor:
         self.bid_schema = BidSchema()
         self.award_schema = AwardSchema()
         self.complaint_schema = ComplaintSchema()
-        self._new_complaint_ids: List[str] = []
+        self._new_complaint_ids: List[Tuple[str, int]] = []
 
     def _record_change(self,
                        change_model_cls: Type[ChangeT],
@@ -222,7 +224,7 @@ class DataProcessor:
                 self.tender_repo.add_entity(new_obj)
 
                 if model_cls == Complaint:
-                    self._new_complaint_ids.append(new_obj.id)
+                    self._new_complaint_ids.append((new_obj.id, len(new_obj.description)))
 
         self.tender_repo.flush()
 
@@ -365,14 +367,18 @@ class DataProcessor:
 
             self.tender_repo.commit()
 
-            new_complaint_ids = self._new_complaint_ids
-            self._new_complaint_ids = []  # Reset the list after commit
+            for complaint_id, length in self._new_complaint_ids:
+                is_heavy = length > 5000
+                queue = "heavy" if is_heavy else "default"
+                countdown = int(min(max((length // 1000), 0), 30)) if is_heavy else 0
 
-            for complaint_id in new_complaint_ids:
-                analyze_complaint_and_update_score.delay(
-                    complaint_id=complaint_id,
-                    tender_id=tender_uuid
+                analyze_complaint_and_update_score.apply_async(
+                    args=(tender_uuid, complaint_id),
+                    queue=queue,
+                    countdown=countdown
                 )
+
+            self._new_complaint_ids.clear()
 
             self.logger.info(f"Successfully prepared changes for tender UUID {tender_uuid}")
             return True
