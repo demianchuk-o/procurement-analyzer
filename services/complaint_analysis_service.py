@@ -78,56 +78,41 @@ class ComplaintAnalysisService:
         return highlighted
 
     def update_violation_scores(self, tender_id: str, complaint: Complaint) -> ViolationScore:
-        """Updates violation scores based on complaint analysis."""
+        """Updates violation scores by adding new complaint scores to existing ones."""
         highlighted_keywords = self.analyze_complaint_text(complaint.description)
 
-        aggregated_keywords = defaultdict(lambda: {"domains": set(), "startPosition": None, "length": None})
+        aggregated = defaultdict(lambda: {"domains": set(), "startPosition": None, "length": None})
         for item in highlighted_keywords:
-            keyword = item["keyword"]
-            domain = item["domain"]
-            start = item["startPosition"]
-            length = item["length"]
+            k, d, s, l = item["keyword"], item["domain"], item["startPosition"], item["length"]
+            aggregated[k]["domains"].add(d)
+            aggregated[k]["startPosition"], aggregated[k]["length"] = s, l
 
-            aggregated_keywords[keyword]["domains"].add(domain)
-            aggregated_keywords[keyword]["startPosition"] = start
-            aggregated_keywords[keyword]["length"] = length
-
-
-        complaint_keywords = []
-        for keyword, data in aggregated_keywords.items():
-            complaint_keywords.append({
-                "keyword": keyword,
-                "domains": list(data["domains"]),
-                "startPosition": data["startPosition"],
-                "length": data["length"]
-            })
-
+        complaint_keywords = [
+            {"keyword": k, "domains": list(v["domains"]), "startPosition": v["startPosition"], "length": v["length"]}
+            for k, v in aggregated.items()
+        ]
         self.violation_score_repo.update_complaint_highlighted_keywords(complaint, complaint_keywords)
 
-        scores = defaultdict(int)
-        for keyword_data in complaint_keywords:
-            domains = keyword_data["domains"]
-            num_domains = len(domains)
+        new_scores = defaultdict(int)
+        for data in complaint_keywords:
+            per_domain = 1 / len(data["domains"])
+            for domain in data["domains"]:
+                new_scores[domain] += per_domain
+        new_scores = dict(new_scores)
 
-            # Distribute score evenly across domains
-            score_per_domain = 1 / num_domains
+        existing = self.violation_score_repo.get_by_tender_id(tender_id)
+        if existing:
+            merged = existing.scores.copy()
+            for domain, val in new_scores.items():
+                merged[domain] = merged.get(domain, 0) + val
+            existing.scores = merged
 
-            for domain in domains:
-                scores[domain] += score_per_domain
-
-        scores = dict(scores)
-
-        existing_score = self.violation_score_repo.get_by_tender_id(tender_id)
-        if existing_score:
-            existing_score.scores = scores
             self.violation_score_repo.flush()
             self.violation_score_repo.commit()
-
             self.logger.info(f"Updated violation scores for tender {tender_id}")
-            return existing_score
-        else:
-            new_score = ViolationScore(tender_id=tender_id, scores=scores)
-            self.violation_score_repo.create(new_score)
+            return existing
 
-            self.logger.info(f"Created violation scores for tender {tender_id}")
-            return new_score
+        created = ViolationScore(tender_id=tender_id, scores=new_scores)
+        self.violation_score_repo.create(created)
+        self.logger.info(f"Created violation scores for tender {tender_id}")
+        return created
