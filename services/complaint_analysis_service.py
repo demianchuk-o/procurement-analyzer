@@ -5,8 +5,7 @@ from collections import defaultdict
 from typing import List, Dict
 
 import spacy
-from celery import shared_task
-
+from celery_app import app as celery_app
 import math
 
 from models import Complaint
@@ -15,7 +14,8 @@ from repositories.tender_repository import TenderRepository
 from repositories.violation_score_repository import ViolationScoreRepository
 from util.db_context_manager import session_scope
 
-@shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
+
+@celery_app.task(rate_limit='10/m', autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
 def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
     """
     Asynchronous task to analyze a complaint and update the violation score.
