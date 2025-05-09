@@ -17,8 +17,13 @@ class ViolationScoreRepository(BaseRepository[ViolationScore]):
         return self._session.query(ViolationScore).filter_by(id=id).first()
 
     def get_by_tender_id(self, tender_id: str) -> Optional[ViolationScore]:
-        """Get ViolationScore by tender_id."""
-        return self._session.query(ViolationScore).filter_by(tender_id=tender_id).first()
+        """Get ViolationScore by tender_id with a row-level lock."""
+        return (
+            self._session.query(ViolationScore)
+            .filter_by(tender_id=tender_id)
+            .with_for_update()
+            .first()
+        )
 
     def create(self, violation_score: ViolationScore) -> None:
         """Create a new ViolationScore, flush and commit the session."""

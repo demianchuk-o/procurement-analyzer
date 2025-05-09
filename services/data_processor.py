@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional, Type
+from typing import List, Dict, Any, Optional, Type, Tuple
 
-from celery import shared_task
+from celery_app import app as celery_app
 from marshmallow import Schema
 
 
@@ -21,11 +21,13 @@ from services.complaint_analysis_service import analyze_complaint_and_update_sco
 from util.db_context_manager import session_scope
 
 
-@shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
+@celery_app.task(queue="default", 
+                 autoretry_for=(Exception,), 
+                 retry_kwargs={'max_retries': 3})
 def process_tender_data_task(tender_uuid: str,
                             tender_ocid: Optional[str],
                             date_modified_utc: datetime,
-                            general_classifier_id: Optional[int]) -> None:
+                             classifier_data: Optional[Dict[str,str]]) -> None:
     """
     Celery task to process tender data.
     """
@@ -35,6 +37,12 @@ def process_tender_data_task(tender_uuid: str,
         try:
             tender_repo = TenderRepository(session)
             data_processor = DataProcessor(tender_repo)
+
+            general_classifier_id = tender_repo.get_or_create_general_classifier_id(classifier_data)
+            if classifier_data and not general_classifier_id:
+                logger.warning(
+                    f"Could not obtain general_classifier_id for tender UUID {tender_uuid} with data: {classifier_data}")
+
 
             data_processor.process_tender_data(
                 tender_uuid=tender_uuid,
@@ -365,14 +373,13 @@ class DataProcessor:
 
             self.tender_repo.commit()
 
-            new_complaint_ids = self._new_complaint_ids
-            self._new_complaint_ids = []  # Reset the list after commit
-
-            for complaint_id in new_complaint_ids:
+            for complaint_id in self._new_complaint_ids:
                 analyze_complaint_and_update_score.delay(
-                    complaint_id=complaint_id,
-                    tender_id=tender_uuid
+                    tender_id=tender_uuid,
+                    complaint_id=complaint_id
                 )
+
+            self._new_complaint_ids.clear()
 
             self.logger.info(f"Successfully prepared changes for tender UUID {tender_uuid}")
             return True

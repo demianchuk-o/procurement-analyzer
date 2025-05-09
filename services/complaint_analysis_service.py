@@ -5,16 +5,18 @@ from collections import defaultdict
 from typing import List, Dict
 
 import spacy
-from celery import shared_task
+from celery_app import app as celery_app
+import math
 
-
+from exceptions import NlpModelNotAvailableError, NlpResourcesNotAvailableError
 from models import Complaint
 from models import ViolationScore
 from repositories.tender_repository import TenderRepository
 from repositories.violation_score_repository import ViolationScoreRepository
 from util.db_context_manager import session_scope
 
-@shared_task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
+
+@celery_app.task(autoretry_for=(Exception,), retry_kwargs={'max_retries': 3})
 def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
     """
     Asynchronous task to analyze a complaint and update the violation score.
@@ -36,28 +38,22 @@ def analyze_complaint_and_update_score(tender_id: str, complaint_id: str):
 
 
 class ComplaintAnalysisService:
-    def __init__(self, violation_score_repo: ViolationScoreRepository,
-                 keywords_path: str = '../keywords.json',
-                 spacy_model: str = "uk_core_news_sm"):
+    def __init__(self, violation_score_repo: ViolationScoreRepository):
+        from signals import NLP_MODEL, LEMMATIZED_KEYWORDS
+
+        self.logger = logging.getLogger(__name__)
         self.violation_score_repo = violation_score_repo
-        self.logger = logging.getLogger(type(self).__name__)
-        self.nlp = spacy.load(spacy_model, disable=["parser", "ner"])
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        full_keywords_path = os.path.join(script_dir, keywords_path)
-        self.keywords = self._load_keywords(full_keywords_path)
-        self.lemmatized_keywords = self._lemmatize_keywords(self.keywords)
+        self.nlp = NLP_MODEL
+        self.lemmatized_keywords = LEMMATIZED_KEYWORDS
 
-    def _load_keywords(self, keywords_path: str) -> Dict:
-        """Loads keywords from a JSON file."""
-        with open(keywords_path, 'r', encoding='utf-8') as file:
-            return json.load(file)
+        if not self.nlp:
+            self.logger.critical("CRITICAL: SpaCy model not available. ComplaintAnalysisService cannot function.")
+            raise NlpModelNotAvailableError("SpaCy model (NLP_MODEL) is not loaded.")
+        if not self.lemmatized_keywords:
+            self.logger.critical(
+                "CRITICAL: Lemmatized keywords not available. ComplaintAnalysisService functionality limited.")
+            raise NlpResourcesNotAvailableError("Lemmatized keywords are not loaded.")
 
-    def _lemmatize_keywords(self, keywords: Dict) -> Dict[str, List[str]]:
-        """Lemmatizes keywords using spaCy."""
-        lemmatized_keywords = {}
-        for domain, words in keywords.items():
-            lemmatized_keywords[domain] = [self.nlp(word)[0].lemma_ for word in words]
-        return lemmatized_keywords
 
     def analyze_complaint_text(self, complaint_text: str) -> List[Dict]:
         """Analyzes complaint text using spaCy lemmatization and returns highlighted keywords."""
@@ -70,7 +66,7 @@ class ComplaintAnalysisService:
                         start = complaint_text.lower().find(token.text)
                         if start != -1:
                             highlighted.append({
-                                "keyword": token.text,
+                                "keyword": token.lemma_,
                                 "domain": domain,
                                 "startPosition": start,
                                 "length": len(token.text)
@@ -78,56 +74,55 @@ class ComplaintAnalysisService:
         return highlighted
 
     def update_violation_scores(self, tender_id: str, complaint: Complaint) -> ViolationScore:
-        """Updates violation scores based on complaint analysis."""
+        """Updates violation scores by adding new complaint scores to existing ones."""
         highlighted_keywords = self.analyze_complaint_text(complaint.description)
-
-        aggregated_keywords = defaultdict(lambda: {"domains": set(), "startPosition": None, "length": None})
+        aggregated = defaultdict(lambda: {"domains": set(), "startPosition": 0, "length": 0, "count": 0})
         for item in highlighted_keywords:
-            keyword = item["keyword"]
-            domain = item["domain"]
-            start = item["startPosition"]
-            length = item["length"]
+            lemma, domain, startPosition, length = item["keyword"], item["domain"], item["startPosition"], item["length"]
+            aggregated[lemma]["domains"].add(domain)
+            aggregated[lemma]["startPosition"] = startPosition
+            aggregated[lemma]["length"] = length
+            aggregated[lemma]["count"] += 1
 
-            aggregated_keywords[keyword]["domains"].add(domain)
-            aggregated_keywords[keyword]["startPosition"] = start
-            aggregated_keywords[keyword]["length"] = length
-
-
-        complaint_keywords = []
-        for keyword, data in aggregated_keywords.items():
-            complaint_keywords.append({
-                "keyword": keyword,
-                "domains": list(data["domains"]),
-                "startPosition": data["startPosition"],
-                "length": data["length"]
-            })
-
+        complaint_keywords = [
+            {"keyword": k, "domains": list(v["domains"]), "startPosition": v["startPosition"], "length": v["length"]}
+            for k, v in aggregated.items()
+        ]
         self.violation_score_repo.update_complaint_highlighted_keywords(complaint, complaint_keywords)
 
-        scores = defaultdict(int)
-        for keyword_data in complaint_keywords:
-            domains = keyword_data["domains"]
-            num_domains = len(domains)
+        new_domain_data = {}
+        for lemma, data in aggregated.items():
+            weight = math.log1p(data["count"])
+            for d in data["domains"]:
+                dom = new_domain_data.setdefault(d, {"score": 0.0, "keywords": {}})
+                dom["score"] += weight
+                dom["keywords"][lemma] = dom["keywords"].get(lemma, 0) + data["count"]
 
-            # Distribute score evenly across domains
-            score_per_domain = 1 / num_domains
 
-            for domain in domains:
-                scores[domain] += score_per_domain
-
-        scores = dict(scores)
-
-        existing_score = self.violation_score_repo.get_by_tender_id(tender_id)
-        if existing_score:
-            existing_score.scores = scores
+        existing = self.violation_score_repo.get_by_tender_id(tender_id)
+        if existing:
+            merged = {}
+            for domain, new in new_domain_data.items():
+                prev = existing.scores.get(domain, {"score": 0.0, "keywords": {}})
+                # sum scores
+                total_score = prev["score"] + new["score"]
+                # merge keyword counts
+                kw_counts = defaultdict(int, prev.get("keywords", {}))
+                for kw, cnt in new["keywords"].items():
+                    kw_counts[kw] += cnt
+                merged[domain] = {
+                    "score": total_score,
+                    "keywords": dict(kw_counts)
+                }
+            existing.scores = merged
             self.violation_score_repo.flush()
             self.violation_score_repo.commit()
+            return existing
 
-            self.logger.info(f"Updated violation scores for tender {tender_id}")
-            return existing_score
-        else:
-            new_score = ViolationScore(tender_id=tender_id, scores=scores)
-            self.violation_score_repo.create(new_score)
 
-            self.logger.info(f"Created violation scores for tender {tender_id}")
-            return new_score
+        created = ViolationScore(
+            tender_id=tender_id,
+            scores={d: {"score": v["score"], "keywords": v["keywords"]} for d, v in new_domain_data.items()}
+        )
+        self.violation_score_repo.create(created)
+        return created

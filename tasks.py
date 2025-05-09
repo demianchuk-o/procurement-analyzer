@@ -16,6 +16,7 @@ def crawl_tenders_task():
         tender_repository = TenderRepository(session)
         crawler_service = CrawlerService(tender_repository)
         crawler_service.crawl_tenders(pages_to_crawl=1)
+        session.commit()
 
 @celery_app.task(name='tasks.sync_all_tenders_task')
 def sync_all_tenders_task():
@@ -23,6 +24,7 @@ def sync_all_tenders_task():
         tender_repository = TenderRepository(session)
         crawler_service = CrawlerService(tender_repository)
         crawler_service.sync_all_tenders()
+        session.commit()
 
 @celery_app.task(name='tasks.send_notifications_task')
 def send_notifications_task():

@@ -51,8 +51,19 @@
   <div class="card-header">Бали порушень на основі знайдених ключових слів</div>
   <div class="card-body">
     {% set vs = format_violation_scores(tender.violation_score.scores, keyword_field_map) %}
-    {% for name, score in vs.items() %}
-      <p><strong>{{ name }}:</strong> {{ score }}</p>
+    {% for domain_name, data in vs.items() %}
+      <div class="mb-3">
+        <p><strong>{{ domain_name }}:</strong> {{ data.score }}</p>
+        {% if data.keywords %}
+          <ul class="list-unstyled ms-3">
+            {% for keyword, count in data.keywords.items() %}
+              <li>
+                <strong>{{ keyword }}</strong> - {{ count }} разів
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
     {% endfor %}
   </div>
 </div>

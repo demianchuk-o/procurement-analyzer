@@ -1,10 +1,20 @@
 version: '3.9'
 
+x-celery-common: &celery-common
+  build: .
+  depends_on:
+    - redis
+    - db
+  environment:
+    - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+    - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+    - DATABASE_URL=${DATABASE_URL}
+
 services:
   web:
     build: .
     ports:
-      - "5000:5000"
+      - '5000:5000'
     depends_on:
       db:
         condition: service_healthy
@@ -22,9 +32,9 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "${DB_HOST_PORT}:${DB_PORT}"
+      - '${DB_HOST_PORT}:${DB_PORT}'
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,19 +42,19 @@ services:
   redis:
     image: redis:latest
     ports:
-        - "${REDIS_HOST_PORT}:6379"
+      - '${REDIS_HOST_PORT}:6379'
 
-  celery:
-    build: .
-    command: celery -A celery_app worker --loglevel=INFO --beat
-    depends_on:
-      web:
-        condition: service_started
-      redis:
-        condition: service_started
-      db:
-        condition: service_healthy
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+  celery_default:
+    <<: *celery-common
+    command: >
+      celery -A celery_app worker
+        --concurrency=6
+        --loglevel=INFO
+        --prefetch-multiplier=4
+        -Q default
+
+  celery_beat:
+    <<: *celery-common
+    command: >
+      celery -A celery_app beat
+        --loglevel=INFO
