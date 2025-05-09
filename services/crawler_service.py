@@ -136,7 +136,6 @@ class CrawlerService:
             return classification.id
         else:
             new_classification = self.tender_repo.create_general_classifier(scheme=scheme, description=description)
-            self.tender_repo.commit()
             self.logger.info(f"Prepared new GeneralClassifier: ID {new_classification.id}, Scheme: {scheme}")
             return new_classification.id
 
