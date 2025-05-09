@@ -7,6 +7,7 @@ from typing import List, Dict
 import spacy
 from celery import shared_task
 
+import math
 
 from models import Complaint
 from models import ViolationScore
@@ -80,12 +81,13 @@ class ComplaintAnalysisService:
     def update_violation_scores(self, tender_id: str, complaint: Complaint) -> ViolationScore:
         """Updates violation scores by adding new complaint scores to existing ones."""
         highlighted_keywords = self.analyze_complaint_text(complaint.description)
-
-        aggregated = defaultdict(lambda: {"domains": set(), "startPosition": None, "length": None})
+        aggregated = defaultdict(lambda: {"domains": set(), "startPosition": 0, "length": 0, "count": 0})
         for item in highlighted_keywords:
-            k, d, s, l = item["keyword"], item["domain"], item["startPosition"], item["length"]
-            aggregated[k]["domains"].add(d)
-            aggregated[k]["startPosition"], aggregated[k]["length"] = s, l
+            lemma, domain, startPosition, length = item["keyword"], item["domain"], item["startPosition"], item["length"]
+            aggregated[lemma]["domains"].add(domain)
+            aggregated[lemma]["startPosition"] = startPosition
+            aggregated[lemma]["length"] = length
+            aggregated[lemma]["count"] += 1
 
         complaint_keywords = [
             {"keyword": k, "domains": list(v["domains"]), "startPosition": v["startPosition"], "length": v["length"]}
@@ -93,26 +95,39 @@ class ComplaintAnalysisService:
         ]
         self.violation_score_repo.update_complaint_highlighted_keywords(complaint, complaint_keywords)
 
-        new_scores = defaultdict(int)
-        for data in complaint_keywords:
-            per_domain = 1 / len(data["domains"])
-            for domain in data["domains"]:
-                new_scores[domain] += per_domain
-        new_scores = dict(new_scores)
+        new_domain_data = {}
+        for lemma, data in aggregated.items():
+            weight = math.log1p(data["count"])
+            for d in data["domains"]:
+                dom = new_domain_data.setdefault(d, {"score": 0.0, "keywords": {}})
+                dom["score"] += weight
+                dom["keywords"][lemma] = dom["keywords"].get(lemma, 0) + data["count"]
+
 
         existing = self.violation_score_repo.get_by_tender_id(tender_id)
         if existing:
-            merged = existing.scores.copy()
-            for domain, val in new_scores.items():
-                merged[domain] = merged.get(domain, 0) + val
+            merged = {}
+            for domain, new in new_domain_data.items():
+                prev = existing.scores.get(domain, {"score": 0.0, "keywords": {}})
+                # sum scores
+                total_score = prev["score"] + new["score"]
+                # merge keyword counts
+                kw_counts = defaultdict(int, prev.get("keywords", {}))
+                for kw, cnt in new["keywords"].items():
+                    kw_counts[kw] += cnt
+                merged[domain] = {
+                    "score": total_score,
+                    "keywords": dict(kw_counts)
+                }
             existing.scores = merged
-
             self.violation_score_repo.flush()
             self.violation_score_repo.commit()
-            self.logger.info(f"Updated violation scores for tender {tender_id}")
             return existing
 
-        created = ViolationScore(tender_id=tender_id, scores=new_scores)
+
+        created = ViolationScore(
+            tender_id=tender_id,
+            scores={d: {"score": v["score"], "keywords": v["keywords"]} for d, v in new_domain_data.items()}
+        )
         self.violation_score_repo.create(created)
-        self.logger.info(f"Created violation scores for tender {tender_id}")
         return created
