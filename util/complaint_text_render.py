@@ -17,6 +17,6 @@ def process_complaint_text(text, complaint_keywords, keyword_field_map):
 
 def format_violation_scores(scores, keyword_field_map):
     return {
-        keyword_field_map.get(str(k), k): round(v, 2)
+        keyword_field_map.get(str(k), k): {"score": round(v["score"], 3), "keywords": v["keywords"]}
         for k, v in scores.items()
     }
