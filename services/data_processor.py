@@ -68,7 +68,7 @@ class DataProcessor:
         self.bid_schema = BidSchema()
         self.award_schema = AwardSchema()
         self.complaint_schema = ComplaintSchema()
-        self._new_complaint_ids: List[Tuple[str, int]] = []
+        self._new_complaint_ids: List[str] = []
 
     def _record_change(self,
                        change_model_cls: Type[ChangeT],
@@ -230,7 +230,7 @@ class DataProcessor:
                 self.tender_repo.add_entity(new_obj)
 
                 if model_cls == Complaint:
-                    self._new_complaint_ids.append((new_obj.id, len(new_obj.description)))
+                    self._new_complaint_ids.append(new_obj.id)
 
         self.tender_repo.flush()
 
@@ -373,15 +373,10 @@ class DataProcessor:
 
             self.tender_repo.commit()
 
-            for complaint_id, length in self._new_complaint_ids:
-                is_heavy = length > 5000
-                queue = "heavy" if is_heavy else "default"
-                countdown = int(min(max((length // 1000), 0), 30)) if is_heavy else 0
-
-                analyze_complaint_and_update_score.apply_async(
-                    args=(tender_uuid, complaint_id),
-                    queue=queue,
-                    countdown=countdown
+            for complaint_id in self._new_complaint_ids:
+                analyze_complaint_and_update_score.delay(
+                    tender_id=tender_uuid,
+                    complaint_id=complaint_id
                 )
 
             self._new_complaint_ids.clear()
