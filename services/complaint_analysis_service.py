@@ -70,7 +70,7 @@ class ComplaintAnalysisService:
                         start = complaint_text.lower().find(token.text)
                         if start != -1:
                             highlighted.append({
-                                "keyword": token.text,
+                                "keyword": token.lemma_,
                                 "domain": domain,
                                 "startPosition": start,
                                 "length": len(token.text)
