@@ -57,72 +57,98 @@ class ComplaintAnalysisService:
 
     def analyze_complaint_text(self, complaint_text: str) -> List[Dict]:
         """Analyzes complaint text using spaCy lemmatization and returns highlighted keywords."""
+        if not complaint_text:
+            return []
         doc = self.nlp(complaint_text.lower())
-        highlighted = []
-        for domain, keywords in self.lemmatized_keywords.items():
-            for keyword in keywords:
-                for token in doc:
-                    if token.lemma_ == keyword:
-                        start = complaint_text.lower().find(token.text)
-                        if start != -1:
-                            highlighted.append({
-                                "keyword": token.lemma_,
-                                "domain": domain,
-                                "startPosition": start,
-                                "length": len(token.text)
-                            })
-        return highlighted
+        
+        # key: ((start_char_offset, length_of_token)
+        # value: {"lemma": "...", "domains": set()}
+        textual_occurrences = {}
+        
+        for token in doc:
+            token_lemma_lower = token.lemma_.lower()
+            for domain, domain_keyword_lemmas in self.lemmatized_keywords.items():
+                if token_lemma_lower in domain_keyword_lemmas:
+                    key = (token.idx, len(token.text))
+                    if key not in textual_occurrences:
+                        textual_occurrences[key] = {
+                            "lemma": token_lemma_lower,
+                            "domains": set()
+                        }
+                    textual_occurrences[key]["domains"].add(domain)
+        
+        highlights = []
+        for (start, length), data in textual_occurrences.items():
+            highlights.append({
+                "keyword": data["lemma"],
+                "domains": list(data["domains"]),
+                "startPosition": start,
+                "length": length
+            })
+        return highlights
 
     def update_violation_scores(self, tender_id: str, complaint: Complaint) -> ViolationScore:
         """Updates violation scores by adding new complaint scores to existing ones."""
-        highlighted_keywords = self.analyze_complaint_text(complaint.description)
-        aggregated = defaultdict(lambda: {"domains": set(), "startPosition": 0, "length": 0, "count": 0})
-        for item in highlighted_keywords:
-            lemma, domain, startPosition, length = item["keyword"], item["domain"], item["startPosition"], item["length"]
-            aggregated[lemma]["domains"].add(domain)
-            aggregated[lemma]["startPosition"] = startPosition
-            aggregated[lemma]["length"] = length
-            aggregated[lemma]["count"] += 1
+        
+        complaint_specific_highlights = self.analyze_complaint_text(complaint.description)
+        
+        self.violation_score_repo.update_complaint_highlighted_keywords(complaint, complaint_specific_highlights)
 
-        complaint_keywords = [
-            {"keyword": k, "domains": list(v["domains"]), "startPosition": v["startPosition"], "length": v["length"]}
-            for k, v in aggregated.items()
-        ]
-        self.violation_score_repo.update_complaint_highlighted_keywords(complaint, complaint_keywords)
 
-        new_domain_data = {}
-        for lemma, data in aggregated.items():
-            weight = math.log1p(data["count"])
-            for d in data["domains"]:
-                dom = new_domain_data.setdefault(d, {"score": 0.0, "keywords": {}})
-                dom["score"] += weight
-                dom["keywords"][lemma] = dom["keywords"].get(lemma, 0) + data["count"]
+        lemma_counts_per_domain = defaultdict(lambda: defaultdict(int))
+        
+        for highlight_item in complaint_specific_highlights:
+            lemma = highlight_item["keyword"]
+            for domain_from_item in highlight_item["domains"]:
+                lemma_counts_per_domain[domain_from_item][lemma] += 1
+        
+        new_domain_data = {} # {"score": float, "keywords": Dict[strLemma, intCount]} per domain
+        for domain_name, counts_for_this_domain in lemma_counts_per_domain.items():
+            current_domain_score_contribution = 0.0
+            current_domain_keywords_map = {} # {"keywords": {"lemma1": count, "lemma2": count}}
+            
+            for lemma, count in counts_for_this_domain.items():
+                weight = math.log1p(count)
+                current_domain_score_contribution += weight
+                current_domain_keywords_map[lemma] = count
+            
+            if current_domain_score_contribution > 0:
+                 new_domain_data[domain_name] = {
+                     "score": current_domain_score_contribution,
+                     "keywords": current_domain_keywords_map
+                 }
 
 
         existing = self.violation_score_repo.get_by_tender_id(tender_id)
         if existing:
-            merged = {}
-            for domain, new in new_domain_data.items():
-                prev = existing.scores.get(domain, {"score": 0.0, "keywords": {}})
-                # sum scores
-                total_score = prev["score"] + new["score"]
-                # merge keyword counts
-                kw_counts = defaultdict(int, prev.get("keywords", {}))
-                for kw, cnt in new["keywords"].items():
-                    kw_counts[kw] += cnt
-                merged[domain] = {
+            merged_scores = existing.scores.copy()
+            for domain, new_data in new_domain_data.items():
+                prev_domain_data = merged_scores.get(domain, {"score": 0.0, "keywords": {}})
+                
+                total_score = prev_domain_data["score"] + new_data["score"]
+                
+
+                kw_counts_for_domain = defaultdict(int, prev_domain_data.get("keywords", {}))
+                for kw, cnt in new_data["keywords"].items():
+                    kw_counts_for_domain[kw] += cnt
+                
+                merged_scores[domain] = {
                     "score": total_score,
-                    "keywords": dict(kw_counts)
+                    "keywords": dict(kw_counts_for_domain)
                 }
-            existing.scores = merged
+            
+            for domain, prev_data in existing.scores.items():
+                if domain not in merged_scores:
+                    merged_scores[domain] = prev_data
+
+            existing.scores = merged_scores
             self.violation_score_repo.flush()
-            self.violation_score_repo.commit()
             return existing
 
 
         created = ViolationScore(
             tender_id=tender_id,
-            scores={d: {"score": v["score"], "keywords": v["keywords"]} for d, v in new_domain_data.items()}
+            scores=new_domain_data
         )
         self.violation_score_repo.create(created)
         return created

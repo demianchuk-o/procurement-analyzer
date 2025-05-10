@@ -1,36 +1,170 @@
-{% extends 'base.html' %}
-{% block title %}Головна{% endblock %}
-{% block content %}
+{% extends 'base.html' %} {% block title %}Головна{% endblock %} {% block
+content %}
+
+<div id="polling-status" class="my-3"></div>
 
 <div class="pagination justify-content-center">
-    <ul class="pagination">
-        {% if page > 1 %}
-            <li class="page-item"><a class="page-link" href="{{ url_for('index', page=page-1) }}">Попередня</a></li>
-        {% endif %}
-
-        {% for page_num in range(1, (total // per_page) + 2) %}
-            <li class="page-item {% if page == page_num %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('index', page=page_num) }}">{{ page_num }}</a>
-            </li>
-        {% endfor %}
-
-        {% if page < (total // per_page) + 1 %}
-            <li class="page-item"><a class="page-link" href="{{ url_for('index', page=page+1) }}">Наступна</a></li>
-        {% endif %}
-    </ul>
+  <ul class="pagination">
+    {% if page > 1 %}
+    <li class="page-item">
+      <a class="page-link" href="{{ url_for('index', page=page-1) }}"
+        >Попередня</a
+      >
+    </li>
+    {% endif %} {% for page_num in range(1, (total // per_page) + 2) %}
+    <li class="page-item {% if page == page_num %}active{% endif %}">
+      <a class="page-link" href="{{ url_for('index', page=page_num) }}"
+        >{{ page_num }}</a
+      >
+    </li>
+    {% endfor %} {% if page < (total // per_page) + 1 %}
+    <li class="page-item">
+      <a class="page-link" href="{{ url_for('index', page=page+1) }}"
+        >Наступна</a
+      >
+    </li>
+    {% endif %}
+  </ul>
 </div>
 
 <div class="row">
   {% for tender in tenders %}
-    <div class="col-md-4 tender-card">
-      <div class="card mb-3">
-        <div class="card-body">
-          <h5 class="card-title">{{ tender.title[:50] }}{% if tender.title|length > 50 %}...{% endif %}</h5>
-          <p class="card-text"><small class="text-muted">Дата: {{ format_datetime(tender.date_modified) }}</small></p>
-          <a href="{{ url_for('tender.tender_detail', tender_id=tender.tender_id) }}" class="btn btn-primary">Деталі</a>
-        </div>
+  <div class="col-md-4 tender-card">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">
+          {{ tender.title[:50] }}{% if tender.title|length > 50 %}...{% endif %}
+        </h5>
+        <p class="card-text">
+          <small class="text-muted"
+            >Дата: {{ format_datetime(tender.date_modified) }}</small
+          >
+        </p>
+        <a
+          href="{{ url_for('tender.tender_detail', tender_id=tender.tender_id) }}"
+          class="btn btn-primary"
+          >Деталі</a
+        >
       </div>
     </div>
-  {% endfor %}
+  </div>
+  {% else %} {% if ocid_being_added and not tenders %}
+  <div class="col-12">
+    <p>
+      Тендер з OCID <strong>{{ ocid_being_added }}</strong> ще обробляється або
+      не знайдено. Зачекайте...
+    </p>
+  </div>
+  {% elif title_filter and not tenders %}
+  <div class="col-12">
+    <p>Не знайдено тендерів за вашим запитом "{{title_filter}}".</p>
+  </div>
+  {% endif %} {% endfor %}
 </div>
+{% endblock %} {% block scripts %} {{ super() }}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const pollingStatusDiv = document.getElementById('polling-status');
+    const ocidToPoll = ('{{ ocid_being_added }}' || '').trim();
+
+    console.log(
+      '[PollingScript] DOMContentLoaded fired. OCID to poll:',
+      ocidToPoll
+    );
+
+    if (!pollingStatusDiv) {
+      console.error('[PollingScript] Critical: Polling status div not found!');
+      return;
+    }
+
+    if (ocidToPoll) {
+      let pollIntervalId = null;
+      let pollCount = 0;
+      const maxFastPolls = 20;
+      const fastPollDelay = 3000;
+      const slowPollDelay = 10000;
+      const maxTotalPolls = maxFastPolls + 18;
+
+      function updatePollingMessage(message, alertType = 'info') {
+        if (pollingStatusDiv) {
+          pollingStatusDiv.innerHTML = `<div class="alert alert-${alertType}" role="alert">${message}</div>`;
+        }
+      }
+
+      function stopPolling() {
+        if (pollIntervalId) {
+          clearInterval(pollIntervalId);
+          pollIntervalId = null;
+          console.log('[PollingScript] Polling stopped.');
+        }
+      }
+
+      function fetchTenderStatus() {
+        stopPolling();
+        console.log(
+          `[PollingScript] Fetching status for ${ocidToPoll}, attempt ${
+            pollCount + 1
+          }`
+        );
+
+        fetch(`/check_tender_status/${ocidToPoll}`)
+          .then((response) => {
+            if (!response.ok) {
+              return response.text().then((text) => {
+                throw new Error(
+                  `Network response was not ok: ${response.status}. Body: ${text}`
+                );
+              });
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.exists && data.tender_uuid) {
+              updatePollingMessage(
+                `Тендер ${ocidToPoll} успішно додано! Перенаправлення...`,
+                'success'
+              );
+              setTimeout(function () {
+                window.location.href = `/tender/tenders/${data.tender_uuid}`;
+              }, 1500);
+            } else {
+              pollCount++;
+              if (pollCount > maxTotalPolls) {
+                updatePollingMessage(
+                  `Обробка тендеру ${ocidToPoll} займає забагато часу. Будь ласка, <a href="${window.location.pathname}?search_ocid=${ocidToPoll}" class="alert-link">оновіть сторінку</a> або перевірте пізніше.`,
+                  'warning'
+                );
+                return;
+              }
+
+              let currentDelay =
+                pollCount <= maxFastPolls ? fastPollDelay : slowPollDelay;
+              const nextCheckTime = currentDelay / 1000;
+              updatePollingMessage(
+                `Обробка тендеру ${ocidToPoll} триває... Перевірка #${pollCount}. Наступна через ${nextCheckTime}с.`
+              );
+              pollIntervalId = setInterval(fetchTenderStatus, currentDelay);
+            }
+          })
+          .catch((error) => {
+            console.error(
+              '[PollingScript] Error polling for tender status:',
+              error
+            );
+            updatePollingMessage(
+              `Помилка при перевірці статусу тендеру ${ocidToPoll}. Спробуйте <a href="${window.location.pathname}?search_ocid=${ocidToPoll}" class="alert-link">оновити сторінку</a>.`,
+              'danger'
+            );
+          });
+      }
+
+      updatePollingMessage(
+        `Перевіряємо статус додавання тендеру ${ocidToPoll}...`
+      );
+      fetchTenderStatus();
+    } else {
+      if (pollingStatusDiv) pollingStatusDiv.innerHTML = '';
+    }
+  });
+</script>
 {% endblock %}

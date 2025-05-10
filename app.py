@@ -1,7 +1,7 @@
 # app.py
 from datetime import datetime, timezone, timedelta
 
-from flask import Flask, render_template, request, session
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 from flask_migrate import Migrate
 
 from api.auth_routes import init_auth_routes
@@ -58,13 +58,18 @@ init_auth_routes(app, auth_service)
 
 @app.route('/')
 def index():
-    title = request.args.get('title', '').strip()
-    # if searching, always start at page 1
-    page = 1 if title else request.args.get('page', 1, type=int)
-    per_page = 18
+    title_search = request.args.get('title', '').strip()
+    ocid_search_param = request.args.get('search_ocid', '').strip()
 
-    if title:
-        tenders, total = tender_repository.search_tenders(title, page, per_page)
+    page = 1 if title_search or ocid_search_param else request.args.get('page', 1, type=int)
+    per_page = 18 # Or your desired number
+
+    search_term_for_repo = title_search
+    if ocid_search_param and not title_search:
+        search_term_for_repo = ocid_search_param
+
+    if search_term_for_repo:
+        tenders, total = tender_repository.search_tenders(search_term_for_repo, page, per_page)
     else:
         tenders, total = tender_repository.get_tenders_short(page, per_page)
 
@@ -74,8 +79,18 @@ def index():
         page=page,
         per_page=per_page,
         total=total,
-        title_filter=title
+        title_filter=title_search,
+        ocid_being_added=ocid_search_param
     )
+
+@app.route('/check_tender_status/<ocid>')
+def check_tender_status(ocid):
+    tender_short_info = tender_repository.get_short_by_ocid_for_status_check(ocid)
+
+    if tender_short_info:
+        return jsonify({"exists": True, "tender_uuid": tender_short_info['id']})
+    else:
+        return jsonify({"exists": False, "tender_uuid": None})
 
 @app.route('/user_tenders')
 def user_tenders():

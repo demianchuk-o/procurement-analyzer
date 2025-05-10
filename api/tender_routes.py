@@ -47,15 +47,18 @@ def init_tender_routes(app,
         tender_ocid = request.form.get('tender_ocid')
         if not tender_ocid:
             flash('Будь ласка, вкажіть OCID', 'danger')
-            return redirect(url_for('index'))
+            return redirect(url_for('tender.add_tender_page'))
 
         try:
             crawler_service.sync_single_tender(tender_ocid)
-            return redirect(url_for('index'))
+
+            flash(f'Тендер {tender_ocid} поставлено в чергу на обробку. Результати з\'являться на головній сторінці.',
+                  'info')
+            return redirect(url_for('index', search_ocid=tender_ocid))
         except Exception as e:
             app.logger.error(f"Error adding tender: {e}", exc_info=True)
-            flash(f"Не вдалося завантажити тендер {tender_ocid}", "danger")
-            return redirect(url_for('index'))
+            flash(f"Не вдалося поставити тендер {tender_ocid} в чергу", "danger")
+            return redirect(url_for('tender.add_tender_page'))
 
     @tender_bp.route('/subscribe', methods=['POST'])
     def subscribe():

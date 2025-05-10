@@ -5,6 +5,8 @@ from celery.schedules import crontab
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+import signals
+
 app = Celery(
     'tender_tasks',
     include=[
