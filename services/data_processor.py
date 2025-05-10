@@ -374,9 +374,9 @@ class DataProcessor:
             self.tender_repo.commit()
 
             for complaint_id in self._new_complaint_ids:
-                analyze_complaint_and_update_score.delay(
-                    tender_id=tender_uuid,
-                    complaint_id=complaint_id
+                analyze_complaint_and_update_score.apply_async(
+                    args=(tender_uuid, complaint_id),
+                    queue='default',
                 )
 
             self._new_complaint_ids.clear()
