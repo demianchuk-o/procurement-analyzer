@@ -9,6 +9,8 @@ from models import Tender, GeneralClassifier, UserSubscription, Complaint, User
 from models.typing import EntityT, ChangeT
 from repositories.base_repository import BaseRepository
 
+import re
+OCID_PATTERN = re.compile(r"^UA-\d{4}-\d{2}-\d{2}-\d{6}-[a-z]$")
 
 class TenderRepository(BaseRepository[Tender]):
 
@@ -38,9 +40,14 @@ class TenderRepository(BaseRepository[Tender]):
             }
         return None
 
-    def search_tenders(self, title: str, page: int, per_page: int) -> Tuple[List[Dict], int]:
+    def search_tenders(self, search_term: str, page: int, per_page: int) -> Tuple[List[Dict], int]:
         query = self._session.query(Tender.id, Tender.date_modified, Tender.title)
-        query = query.filter(Tender.title.ilike(f"%{title}%"))
+
+        if OCID_PATTERN.match(search_term):
+            query = query.filter(Tender.ocid == search_term)
+        else:
+            query = query.filter(Tender.title.ilike(f"%{search_term}%"))
+
         total = query.count()
         rows = query.offset((page - 1) * per_page).limit(per_page).all()
         tenders = [
@@ -48,6 +55,15 @@ class TenderRepository(BaseRepository[Tender]):
             for r in rows
         ]
         return tenders, total
+
+    def get_short_by_ocid_for_status_check(self, ocid: str) -> Optional[Dict]:
+        """ Fetches minimal info for a tender by OCID, optimized for existence check. """
+        tender = self._session.query(Tender.id).filter(Tender.ocid == ocid).first()
+        if tender:
+            return {
+                'id': tender.id
+            }
+        return None
 
     def get_tenders_short(self, page: int, per_page: int) -> Tuple[List[Dict], int]:
         """
