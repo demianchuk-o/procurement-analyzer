@@ -48,10 +48,19 @@ services:
     <<: *celery-common
     command: >
       celery -A celery_app worker
-        --concurrency=6
+        --concurrency=4
         --loglevel=INFO
         --prefetch-multiplier=4
         -Q default
+
+  celery_email:
+    <<: *celery-common
+    command: >
+      celery -A celery_app worker
+        --concurrency=6  # Adjust concurrency as needed for email tasks
+        --loglevel=INFO
+        --prefetch-multiplier=1
+        -Q email_queue
 
   celery_beat:
     <<: *celery-common

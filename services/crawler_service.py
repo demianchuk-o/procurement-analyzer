@@ -47,11 +47,9 @@ class CrawlerService:
                 return
 
 
-            process_tender_data_task.delay(
-                tender_uuid=tender_uuid,
-                tender_ocid=tender_ocid,
-                date_modified_utc=date_modified_utc,
-                classifier_data=classifier_data,
+            process_tender_data_task.apply_async(
+                args=(tender_uuid, tender_ocid, date_modified_utc, classifier_data),
+                queue='default',
             )
 
             self.logger.info(f"Scheduled data processing task for tender UUID {tender_uuid}")
