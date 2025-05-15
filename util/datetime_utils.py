@@ -10,5 +10,5 @@ def parse_datetime(date_str):
 def format_datetime(dt):
     """Formats datetime object to a readable string"""
     if not dt:
-        return None
+        return "Дата не вказана"
     return dt.strftime("%Y-%m-%d %H:%M:%S")
