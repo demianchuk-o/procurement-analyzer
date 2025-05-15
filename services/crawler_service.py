@@ -64,19 +64,16 @@ class CrawlerService:
 
         try:
             # Get OCIDs of tenders
-            ocids_statuses = self.tender_repo.get_tenders_ocid_status()
-            self.logger.info(f"Found {len(ocids_statuses)} tenders.")
+            active_tender_ocids = self.tender_repo.get_active_tender_ocids(finished_tenders_statuses)
+            self.logger.info(f"Found {len(active_tender_ocids)} tenders.")
 
-            for ocid, status in ocids_statuses:
-                if status in finished_tenders_statuses:
-                    self.logger.info(f"Tender OCID {ocid} is finished. Skipping.")
-                    continue
+            for ocid in active_tender_ocids:
                 self.logger.info(f"Checking tender (OCID: {ocid})")
                 self.sync_single_tender(ocid)
                 processed_count += 1
 
             self.logger.info(
-                f"Finished scheduling sync for subscribed tenders. Scheduled: {processed_count}/{len(ocids_statuses)}")
+                f"Finished scheduling sync for subscribed tenders. Scheduled: {processed_count}/{len(active_tender_ocids)}")
 
         except Exception as e:
             self.logger.error(f"Error during subscribed tender sync: {e}", exc_info=True)

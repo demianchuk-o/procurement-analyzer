@@ -151,6 +151,16 @@ class TenderRepository(BaseRepository[Tender]):
         return self._session.query(Tender.ocid, Tender.status).filter(
             Tender.ocid.isnot(None)
         ).all()
+        
+    def get_active_tender_ocids(self, excluded_statuses: List[str]) -> List[str]:
+        """
+        Fetches OCIDs of tenders whose status is NOT in excluded_statuses.
+        """
+        results = self._session.query(Tender.ocid).filter(
+            Tender.ocid.isnot(None),
+            Tender.status.notin_(excluded_statuses)
+        ).all()
+        return [r[0] for r in results]
 
     def get_complaint_by_id(self, complaint_id: str) -> Optional[Complaint]:
         """
