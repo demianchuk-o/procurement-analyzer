@@ -1,3 +1,5 @@
+import logging
+
 from celery_app import app as celery_app
 from repositories.tender_repository import TenderRepository
 from services.crawler_service import CrawlerService
@@ -26,6 +28,35 @@ def sync_all_tenders_task():
         crawler_service.sync_all_tenders()
         session.commit()
 
+@celery_app.task(
+    name='tasks.send_batch_email_task',
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60
+)
+def send_batch_email_task(self, recipients: list, subject: str, html_body: str):
+    """
+    Send one email per recipient over a single SMTP connection.
+    """
+    try:
+        logger = logging.getLogger(__name__)
+        with app.app_context():
+            with EmailService(
+                smtp_server=app.config['SMTP_SERVER'],
+                port=app.config['SMTP_PORT'],
+                sender_email=app.config['SMTP_USER'],
+                password=app.config['SMTP_PASSWORD']
+            ) as email_service:
+                for rcpt in recipients:
+                    try:
+                        email_service.send(rcpt, subject, html_body)
+                    except Exception as e:
+                        rcpt_masked = rcpt[:2] + "****" + rcpt[-2:]
+                        logger.error(f"Failed to send email to {rcpt_masked} {e}", exc_info=True)
+    except Exception as exc:
+        logger.exception("Batch email task failed, retrying...")
+        raise self.retry(exc=exc)
+
 @celery_app.task(name='tasks.send_notifications_task')
 def send_notifications_task():
     with app.app_context(), session_scope() as session:
@@ -33,12 +64,6 @@ def send_notifications_task():
             tender_repository=TenderRepository(session),
             report_generator=ReportGenerationService(session),
             html_builder=HtmlReportBuilder(),
-            email_service=EmailService(
-                smtp_server=app.config['SMTP_SERVER'],
-                port=app.config['SMTP_PORT'],
-                sender_email=app.config['SMTP_USER'],
-                password=app.config['SMTP_PASSWORD']
-            ),
             datetime_provider=DatetimeProvider(),
             report_interval_hours=1
         )

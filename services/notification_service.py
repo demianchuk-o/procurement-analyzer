@@ -3,20 +3,19 @@ from datetime import timedelta
 
 from repositories.tender_repository import TenderRepository
 from services.datetime_provider import DatetimeProvider
-from services.email_service import EmailService
 from services.html_report_builder import HtmlReportBuilder
 from services.report_generation_service import ReportGenerationService
+
+from tasks import send_batch_email_task
 
 logger = logging.getLogger(__name__)
 
 class NotificationService:
     def __init__(self, tender_repository: TenderRepository, report_generator: ReportGenerationService,
-                    html_builder: HtmlReportBuilder, email_service: EmailService,
-                    datetime_provider: DatetimeProvider, report_interval_hours: int = 1):
+                    html_builder: HtmlReportBuilder, datetime_provider: DatetimeProvider, report_interval_hours: int = 1):
         self.tender_repo = tender_repository
         self.report_generator = report_generator
         self.html_builder = html_builder
-        self.email_service = email_service
         self.datetime_provider = datetime_provider
         self.report_interval = timedelta(hours=report_interval_hours)
 
@@ -48,13 +47,11 @@ class NotificationService:
                     tender_title = report_data.get("tender_info", f"Tender {tender_id}")
                     subject = f"Оновлення тендеру: {tender_title}"
 
-
-                    for email in user_emails:
-                        self.email_service.send_report(email, subject, html_report)
-                        email_split = email.split('@')
-                        email_formatted = f"{email_split[0][:2]}***@{email_split[1]}"
-                        logger.debug(f"Sent notification for tender {tender_id} to {email_formatted}")
-
+                    send_batch_email_task.apply_async(
+                        args=(user_emails, subject, html_report),
+                        queue='email_queue'
+                    )
+                    
                 except ValueError as e:
                      logger.error(f"Could not generate report for tender {tender_id}: {e}")
                 except Exception as e:
