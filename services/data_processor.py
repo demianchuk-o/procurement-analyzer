@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Type, Tuple
+from decimal import Decimal
 
 from celery_app import app as celery_app
 from marshmallow import Schema
@@ -153,6 +154,11 @@ class DataProcessor:
 
             old_value = getattr(existing_entity, field)
             new_value = getattr(new_data_obj, field)
+            
+            if isinstance(old_value, (int, float, Decimal)) and isinstance(new_value, (int, float, Decimal)):
+                old_num = Decimal(old_value).quantize(Decimal('0.01'))
+                new_num = Decimal(new_value).quantize(Decimal('0.01'))
+                is_different = old_num != new_num
 
             # datetime comparison case
             if isinstance(old_value, datetime) and isinstance(new_value, datetime):
