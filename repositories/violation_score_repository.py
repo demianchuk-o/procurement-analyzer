@@ -29,11 +29,10 @@ class ViolationScoreRepository(BaseRepository[ViolationScore]):
         """Create a new ViolationScore, flush and commit the session."""
         self._session.add(violation_score)
         self._session.flush()
-        self._session.commit()
 
     def update_complaint_highlighted_keywords(self, complaint: Complaint, highlighted_keywords: List[Dict]) -> None:
         """
         Updates the highlighted keywords in a complaint.
         """
         complaint.highlighted_keywords = highlighted_keywords
-        self._session.commit()
+        self._session.flush()
