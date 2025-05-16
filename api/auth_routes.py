@@ -1,6 +1,7 @@
 import re
 
 from flask import Blueprint, request, render_template, redirect, url_for, flash, session
+from flask_jwt_extended import jwt_required
 
 from services.auth_service import AuthService
 
@@ -62,10 +63,10 @@ def init_auth_routes(app, auth_service: AuthService):
         return render_template('login.html')
 
     @auth_bp.route('/logout')
+    @jwt_required()
     def logout():
         response = redirect(url_for('index'))
         auth_service.logout(response)
-        session.pop('user_id', None)
         flash("Ви вийшли", "success")
         return response
 

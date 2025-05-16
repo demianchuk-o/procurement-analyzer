@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, redirect, url_for, flash, session, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from services.user_service import UserService
 
@@ -13,6 +14,7 @@ def init_tender_routes(app,
                        crawler_service):
     user_service = UserService(user_repository, tender_repository)
     @tender_bp.route('/tenders/<tender_id>')
+    @jwt_required(optional=True)
     def tender_detail(tender_id):
         try:
             tender = tender_repository.get_by_id(tender_id)
@@ -22,11 +24,11 @@ def init_tender_routes(app,
                 return "Tender not found", 404
 
             report_data = report_generation_service.generate_tender_report(tender_id=tender_id,
-                                                                           new_since=datetime.now() - timedelta(
-                                                                               hours=1),
+                                                                           new_since=datetime.now() - timedelta(hours=1),
                                                                            changes_since=None)
+            user_id = get_jwt_identity()
             subscribed = False
-            if session.get('user_id'):
+            if user_id:
                 found_sub = user_repository.find_subscription(session['user_id'], tender_id)
                 subscribed = found_sub is not None
 
@@ -61,8 +63,9 @@ def init_tender_routes(app,
             return redirect(url_for('tender.add_tender_page'))
 
     @tender_bp.route('/subscribe', methods=['POST'])
+    @jwt_required()
     def subscribe():
-        user_id = session.get('user_id')
+        user_id = get_jwt_identity()
         tender_id = request.form['tender_id']
         try:
             user_service.subscribe_to_tender(user_id, tender_id)
@@ -72,8 +75,9 @@ def init_tender_routes(app,
         return redirect(url_for('tender.tender_detail', tender_id=tender_id))
 
     @tender_bp.route('/unsubscribe', methods=['POST'])
+    @jwt_required()
     def unsubscribe():
-        user_id = session.get('user_id')
+        user_id = get_jwt_identity()
         tender_id = request.form['tender_id']
         try:
             user_service.unsubscribe_from_tender(user_id, tender_id)

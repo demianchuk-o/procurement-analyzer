@@ -1,7 +1,5 @@
-# app.py
-from datetime import datetime, timezone, timedelta
-
-from flask import Flask, render_template, request, session, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask_jwt_extended import jwt_required, verify_jwt_in_request, get_jwt_identity
 from flask_migrate import Migrate
 
 from api.auth_routes import init_auth_routes
@@ -37,6 +35,14 @@ import models
 
 migrate = Migrate(app, db)
 
+@app.context_processor
+def inject_user():
+    try:
+        verify_jwt_in_request()
+        user_id = get_jwt_identity()
+    except:
+        user_id = None
+    return dict(current_user_id=user_id)
 
 user_repository = UserRepository(db.session)
 tender_repository = TenderRepository(db.session)
@@ -45,8 +51,6 @@ password_service = PasswordService()
 auth_service = AuthService(app, user_repository, password_service)
 
 
-
-# Move CrawlerService import and initialization here
 def init_crawler_service():
     from services.crawler_service import CrawlerService
     crawler_service = CrawlerService(tender_repository)
@@ -62,7 +66,7 @@ def index():
     ocid_search_param = request.args.get('search_ocid', '').strip()
 
     page = 1 if title_search or ocid_search_param else request.args.get('page', 1, type=int)
-    per_page = 18 # Or your desired number
+    per_page = 18
 
     search_term_for_repo = title_search
     if ocid_search_param and not title_search:
@@ -93,8 +97,9 @@ def check_tender_status(ocid):
         return jsonify({"exists": False, "tender_uuid": None})
 
 @app.route('/user_tenders')
+@jwt_required()
 def user_tenders():
-    user_id = session.get('user_id')
+    user_id = get_jwt_identity()
     if not user_id:
         return redirect(url_for('auth.login'))
     tenders = tender_repository.get_subscribed_tenders(user_id)
