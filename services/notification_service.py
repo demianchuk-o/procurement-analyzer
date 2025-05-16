@@ -6,8 +6,6 @@ from services.datetime_provider import DatetimeProvider
 from services.html_report_builder import HtmlReportBuilder
 from services.report_generation_service import ReportGenerationService
 
-from tasks import send_batch_email_task
-
 logger = logging.getLogger(__name__)
 
 class NotificationService:
@@ -46,6 +44,8 @@ class NotificationService:
                     html_report = self.html_builder.generate_report(report_data)
                     tender_title = report_data.get("tender_info", f"Tender {tender_id}")
                     subject = f"Оновлення тендеру: {tender_title}"
+
+                    from tasks import send_batch_email_task
 
                     send_batch_email_task.apply_async(
                         args=(user_emails, subject, html_report),
