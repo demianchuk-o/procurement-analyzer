@@ -18,17 +18,17 @@ app = Celery(
 app.config_from_object('celeryconfig')
 
 app.conf.beat_schedule = {
-    'crawl-tenders-every-15-minutes': {
+    'crawl-tenders': {
         'task': 'tasks.crawl_tenders_task',
         'schedule': crontab(minute='*/15'),
     },
-    'sync-all-tenders-every-hour': {
+    'sync-all-tenders': {
         'task': 'tasks.sync_all_tenders_task',
-        'schedule': crontab(minute='*/60'),
+        'schedule': crontab(minute='*/30'),
     },
-    'send-notifications-every-hour': {
+    'send-notifications': {
         'task': 'tasks.send_notifications_task',
-        'schedule': crontab(minute='*/60'),
+        'schedule': crontab(minute='*/30'),
     },
 }
 
