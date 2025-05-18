@@ -12,7 +12,10 @@ enable_utc = True
 
 task_default_queue = 'default'
 task_queues = (
-    Queue('default', Exchange('default'), routing_key='default'),
+    Queue('default',
+          Exchange('default'),
+          routing_key='default',
+          queue_arguments={'x-max-priority': 10}),
     Queue('email_queue', Exchange('email_queue'), routing_key='email_queue'),
 )
 

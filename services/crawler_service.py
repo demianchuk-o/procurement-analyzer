@@ -15,7 +15,7 @@ class CrawlerService:
         self.tender_repo = tender_repo
         self.logger = logging.getLogger(type(self).__name__)
 
-    def sync_single_tender(self, tender_ocid: str) -> None:
+    def sync_single_tender(self, tender_ocid: str, high_priority: bool = False) -> None:
         """
         Syncs a single tender using its OCID. Fetches data from both APIs if dateModified indicates a change.
         Manages DB transaction.
@@ -50,6 +50,7 @@ class CrawlerService:
             process_tender_data_task.apply_async(
                 args=(tender_uuid, tender_ocid, date_modified_utc, classifier_data),
                 queue='default',
+                priority=5 if high_priority else 0
             )
 
             self.logger.info(f"Scheduled data processing task for tender UUID {tender_uuid}")

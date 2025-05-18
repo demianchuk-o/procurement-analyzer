@@ -28,7 +28,8 @@ from util.db_context_manager import session_scope
 def process_tender_data_task(tender_uuid: str,
                             tender_ocid: Optional[str],
                             date_modified_utc: datetime,
-                             classifier_data: Optional[Dict[str,str]]) -> None:
+                             classifier_data: Optional[Dict[str,str]],
+                             high_priority: bool = False) -> None:
     """
     Celery task to process tender data.
     """
@@ -59,7 +60,7 @@ def process_tender_data_task(tender_uuid: str,
             raise
 
 class DataProcessor:
-    def __init__(self, tender_repo: TenderRepository) -> None:
+    def __init__(self, tender_repo: TenderRepository, high_priority: bool = False) -> None:
         self.logger = logging.getLogger(type(self).__name__)
         self.tender_repo = tender_repo
         self.legacy_client = LegacyProzorroClient()
@@ -70,6 +71,8 @@ class DataProcessor:
         self.award_schema = AwardSchema()
         self.complaint_schema = ComplaintSchema()
         self._new_complaint_ids: List[str] = []
+
+        self.high_priority = high_priority
 
     def _record_change(self,
                        change_model_cls: Type[ChangeT],
@@ -383,6 +386,7 @@ class DataProcessor:
                 analyze_complaint_and_update_score.apply_async(
                     args=(tender_uuid, complaint_id),
                     queue='default',
+                    priority=5 if self.high_priority else 0
                 )
 
             self._new_complaint_ids.clear()

@@ -52,7 +52,7 @@ def init_tender_routes(app,
             return redirect(url_for('tender.add_tender_page'))
 
         try:
-            crawler_service.sync_single_tender(tender_ocid)
+            crawler_service.sync_single_tender(tender_ocid, high_priority=True)
 
             flash(f'Тендер {tender_ocid} поставлено в чергу на обробку. Результати з\'являться на головній сторінці.',
                   'info')

@@ -20,7 +20,7 @@ app.config_from_object('celeryconfig')
 app.conf.beat_schedule = {
     'crawl-tenders': {
         'task': 'tasks.crawl_tenders_task',
-        'schedule': crontab(minute='*/15'),
+        'schedule': crontab(minute='*/3'),
     },
     'sync-all-tenders': {
         'task': 'tasks.sync_all_tenders_task',
