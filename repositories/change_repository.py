@@ -27,7 +27,7 @@ class ChangeRepository(BaseDatasource):
             change_cls.tender_id == tender_id,
         )
         if since_date:
-            query = query.filter(change_cls.date > since_date)
+            query = query.filter(change_cls.change_date > since_date)
 
         changes = query.all()
         return changes
