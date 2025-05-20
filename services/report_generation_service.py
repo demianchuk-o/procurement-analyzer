@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict
 
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,7 @@ from models import TenderChange, BidChange, AwardChange, ComplaintChange, \
 from repositories.change_repository import ChangeRepository
 from repositories.tender_repository import TenderRepository
 from util.report_helpers import get_entity_short_info
+from util.datetime_utils import ensure_utc_aware
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +22,14 @@ class ReportGenerationService:
         self.tender_repo = TenderRepository(session)
 
     def generate_tender_report(self, tender_id: str, new_since: datetime,
-                               changes_since: Optional[datetime] = None) -> Dict:
+                               changes_since: datetime = datetime.min) -> Dict:
         """
         Generates a structured report dictionary for a specific tender, focusing on
         new entities and changes since a given date.
         """
         logger.info(f"Generating report for tender {tender_id} since {new_since}")
 
+        new_since_utc = ensure_utc_aware(new_since)
         tender = self.tender_repo.get_tender_with_relations(tender_id)
 
         tender_info = get_entity_short_info(tender)
@@ -42,16 +44,26 @@ class ReportGenerationService:
         document_changes = self.change_repo.get_changes_since(TenderDocumentChange, tender_id, changes_since)
         complaint_changes = self.change_repo.get_changes_since(ComplaintChange, tender_id, changes_since)
 
-        new_bids = [b for b in tender.bids if
-                    hasattr(b, 'date') and b.date and b.date.replace(tzinfo=None) > new_since]
-        new_awards = [a for a in tender.awards if
-                      hasattr(a, 'award_date') and a.award_date and a.award_date.replace(tzinfo=None) > new_since]
-        new_documents = [d for d in tender.documents if
-                         hasattr(d, 'date_published') and d.date_published and d.date_published.replace(
-                             tzinfo=None) > new_since]
-        new_complaints = [c for c in tender.complaints if
-                          hasattr(c, 'date_submitted') and c.date_submitted and c.date_submitted.replace(
-                              tzinfo=None) > new_since]
+        new_bids = [
+            b for b in tender.bids if
+            hasattr(b, 'date') and b.date and
+            ensure_utc_aware(b.date) > new_since_utc
+        ]
+        new_awards = [
+            a for a in tender.awards if
+            hasattr(a, 'award_date') and a.award_date and
+            ensure_utc_aware(a.award_date) > new_since_utc
+        ]
+        new_documents = [
+            d for d in tender.documents if
+            hasattr(d, 'date_published') and d.date_published and
+            ensure_utc_aware(d.date_published) > new_since_utc
+        ]
+        new_complaints = [
+            c for c in tender.complaints if
+            hasattr(c, 'date_submitted') and c.date_submitted and
+            ensure_utc_aware(c.date_submitted) > new_since_utc
+        ]
 
 
         bid_map = {b.id: b for b in tender.bids}
@@ -70,7 +82,7 @@ class ReportGenerationService:
                 bid_obj = bid_map[change.bid_id]
                 if not bid_entity_changes[change.bid_id]["info"]:
                      bid_entity_changes[change.bid_id]["info"] = get_entity_short_info(bid_obj)
-                bid_entity_changes[f"bid_{change.bid_id}"]["changes"].append(change)
+                bid_entity_changes[change.bid_id]["changes"].append(change)
 
         for change in award_changes:
             if change.award_id in award_map:
