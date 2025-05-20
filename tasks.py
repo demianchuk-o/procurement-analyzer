@@ -65,6 +65,6 @@ def send_notifications_task():
             report_generator=ReportGenerationService(session),
             html_builder=HtmlReportBuilder(),
             datetime_provider=DatetimeProvider(),
-            report_interval_hours=1
+            report_interval_min=15
         )
         notification_service.send_notifications()

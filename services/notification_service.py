@@ -10,12 +10,12 @@ logger = logging.getLogger(__name__)
 
 class NotificationService:
     def __init__(self, tender_repository: TenderRepository, report_generator: ReportGenerationService,
-                    html_builder: HtmlReportBuilder, datetime_provider: DatetimeProvider, report_interval_hours: int = 1):
+                    html_builder: HtmlReportBuilder, datetime_provider: DatetimeProvider, report_interval_min: int = 15):
         self.tender_repo = tender_repository
         self.report_generator = report_generator
         self.html_builder = html_builder
         self.datetime_provider = datetime_provider
-        self.report_interval = timedelta(hours=report_interval_hours)
+        self.report_interval = timedelta(minutes=report_interval_min * 2)
 
     def send_notifications(self):
         """
