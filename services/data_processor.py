@@ -278,6 +278,10 @@ class DataProcessor:
             return False
 
         try:
+            if date_modified_utc.tzinfo is None:
+                date_modified_utc = date_modified_utc.replace(tzinfo=timezone.utc)
+            date_modified_utc = date_modified_utc.astimezone(timezone.utc)
+
             existing_tender = self.tender_repo.get_tender_with_relations(tender_uuid)
             is_new_tender = existing_tender is None
 
