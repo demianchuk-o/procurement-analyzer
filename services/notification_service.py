@@ -10,12 +10,12 @@ logger = logging.getLogger(__name__)
 
 class NotificationService:
     def __init__(self, tender_repository: TenderRepository, report_generator: ReportGenerationService,
-                    html_builder: HtmlReportBuilder, datetime_provider: DatetimeProvider, report_interval_hours: int = 1):
+                    html_builder: HtmlReportBuilder, datetime_provider: DatetimeProvider, report_interval_min: int = 15):
         self.tender_repo = tender_repository
         self.report_generator = report_generator
         self.html_builder = html_builder
         self.datetime_provider = datetime_provider
-        self.report_interval = timedelta(hours=report_interval_hours)
+        self.report_interval = timedelta(minutes=report_interval_min * 2)
 
     def send_notifications(self):
         """
@@ -37,9 +37,13 @@ class NotificationService:
             for tender_id, user_emails in tender_user_map.items():
                 logger.info(f"Processing tender ID: {tender_id} for {len(user_emails)} users.")
                 try:
-                    report_data = self.report_generator.generate_tender_report(tender_id=tender_id,
-                                                                               new_since=since_date,
-                                                                               changes_since=since_date)
+                    report_data = self.report_generator.generate_tender_report(
+                        tender_id=tender_id,
+                        new_since=since_date,
+                        changes_since=since_date,
+                        fetch_new_entities=True,
+                        fetch_entity_changes=True
+                    )
 
                     html_report = self.html_builder.generate_report(report_data)
                     tender_title = report_data.get("tender_info", f"Tender {tender_id}")

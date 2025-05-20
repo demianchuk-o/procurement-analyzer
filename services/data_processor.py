@@ -76,6 +76,7 @@ class DataProcessor:
 
     def _record_change(self,
                        change_model_cls: Type[ChangeT],
+                       tender_id: str,
                        entity_fk_name: str, # 'tender_id', 'bid_id'
                        entity_fk_value: Any,
                        change_date: datetime,
@@ -104,6 +105,7 @@ class DataProcessor:
             change_data = {
                 entity_fk_name: entity_fk_value,
                 "change_date": change_date,
+                "tender_id": tender_id,
                 "field_name": field_name,
                 "old_value": old_value_str,
                 "new_value": new_value_str,
@@ -118,6 +120,7 @@ class DataProcessor:
 
     def _update_entity(self,
                        existing_entity: EntityT,
+                       tender_uuid: str,
                        new_data_obj: EntityT,
                        fields_to_check: List[str],
                        change_model_cls: Type[ChangeT],
@@ -139,6 +142,7 @@ class DataProcessor:
                 setattr(existing_entity, 'status', 'deleted')
                 self._record_change(
                     change_model_cls=change_model_cls,
+                    tender_id=tender_uuid,
                     entity_fk_name=entity_fk_name,
                     entity_fk_value=entity_id,
                     change_date=change_date,
@@ -177,6 +181,7 @@ class DataProcessor:
                 setattr(existing_entity, field, new_value)
                 self._record_change(
                     change_model_cls=change_model_cls,
+                    tender_id=tender_uuid,
                     entity_fk_name=entity_fk_name,
                     entity_fk_value=entity_id,
                     change_date=change_date,
@@ -227,6 +232,7 @@ class DataProcessor:
                 self.logger.info(f"Updating existing {model_cls.__name__} {entity_id}")
                 self._update_entity(
                     existing_entity=existing_entity,
+                    tender_uuid=tender_id,
                     new_data_obj=new_obj,
                     fields_to_check=fields_to_check,
                     change_model_cls=change_model_cls,
@@ -278,6 +284,10 @@ class DataProcessor:
             return False
 
         try:
+            if date_modified_utc.tzinfo is None:
+                date_modified_utc = date_modified_utc.replace(tzinfo=timezone.utc)
+            date_modified_utc = date_modified_utc.astimezone(timezone.utc)
+
             existing_tender = self.tender_repo.get_tender_with_relations(tender_uuid)
             is_new_tender = existing_tender is None
 
@@ -312,6 +322,7 @@ class DataProcessor:
 
                 self._update_entity(
                     existing_entity=target_tender,
+                    tender_uuid=tender_uuid
                     new_data_obj=loaded_tender,
                     fields_to_check=tender_fields,
                     change_model_cls=TenderChange,
@@ -323,7 +334,7 @@ class DataProcessor:
                 if target_tender.date_modified != date_modified_utc:
                      target_tender.date_modified = date_modified_utc
                 if target_tender.general_classifier_id != general_classifier_id:
-                     self._record_change(TenderChange, 'tender_id', tender_uuid, date_modified_utc, 'general_classifier_id', target_tender.general_classifier_id, general_classifier_id)
+                     self._record_change(TenderChange, tender_uuid, 'tender_id', tender_uuid, date_modified_utc, 'general_classifier_id', target_tender.general_classifier_id, general_classifier_id)
                      target_tender.general_classifier_id = general_classifier_id
 
             change_date_for_related = date_modified_utc

@@ -9,6 +9,7 @@ x-celery-common: &celery-common
     - CELERY_BROKER_URL=${CELERY_BROKER_URL}
     - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     - DATABASE_URL=${DATABASE_URL}
+    - LOAD_NLP_MODEL=false
 
 services:
   web:
@@ -46,6 +47,11 @@ services:
 
   celery_default:
     <<: *celery-common
+    environment:
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - DATABASE_URL=${DATABASE_URL}
+      - LOAD_NLP_MODEL=true
     command: >
       celery -A celery_app worker
         --concurrency=4
@@ -55,12 +61,25 @@ services:
 
   celery_email:
     <<: *celery-common
-    command: >
-      celery -A celery_app worker
-        --concurrency=6  # Adjust concurrency as needed for email tasks
-        --loglevel=INFO
-        --prefetch-multiplier=1
-        -Q email_queue
+    environment:
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - DATABASE_URL=${DATABASE_URL}
+      - LOAD_NLP_MODEL=false
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    command:
+      - "celery"
+      - "-A"
+      - "celery_app"
+      - "worker"
+      - "--concurrency=6"
+      - "--loglevel=INFO"
+      - "--prefetch-multiplier=1"
+      - "-Q"
+      - "email_queue"
 
   celery_beat:
     <<: *celery-common

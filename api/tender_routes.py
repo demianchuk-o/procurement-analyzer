@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, render_template, redirect, url_for, flash, session, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -23,9 +23,13 @@ def init_tender_routes(app,
             if not tender:
                 return "Tender not found", 404
 
-            report_data = report_generation_service.generate_tender_report(tender_id=tender_id,
-                                                                           new_since=datetime.now() - timedelta(hours=1),
-                                                                           changes_since=None)
+            report_data = report_generation_service.generate_tender_report(
+                tender_id=tender.id,
+                fetch_new_entities=False,
+                fetch_entity_changes=True,
+                changes_since=datetime.min.replace(tzinfo=timezone.utc)
+            )
+
             user_id = get_jwt_identity()
             subscribed = False
             if user_id:

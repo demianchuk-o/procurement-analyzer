@@ -11,13 +11,20 @@ LEMMATIZED_KEYWORDS = None
 def init_nlp_model(**kwargs):
     global NLP_MODEL, LEMMATIZED_KEYWORDS
     logger = logging.getLogger("celery.worker.nlp_loader")
+
+    if os.environ.get("LOAD_NLP_MODEL", "false").lower() != "true":
+        logger.info(f"LOAD_NLP_MODEL is '{os.environ.get('LOAD_NLP_MODEL', 'Not Set')}'. Skipping SpaCy model loading for this worker process.")
+        NLP_MODEL = None
+        LEMMATIZED_KEYWORDS = None
+        return
+
     if NLP_MODEL is None:
         try:
             logger.info("Loading SpaCy model and keywords for worker process...")
             NLP_MODEL = spacy.load("uk_core_news_sm", disable=["parser", "ner"])
 
-            project_root = os.path.dirname(os.path.abspath(__file__)) # signals.py is in the root directory
-            keywords_path = os.path.join(project_root, 'keywords.json') # keywords are in root too
+            project_root = os.path.dirname(os.path.abspath(__file__))
+            keywords_path = os.path.join(project_root, 'keywords.json')
 
             if not os.path.exists(keywords_path):
                 logger.error(f"Keywords file not found at: {keywords_path}")
