@@ -1,4 +1,5 @@
 from datetime import datetime
+from symbol import if_stmt
 from typing import Any, Callable, Dict, Type
 
 from models.typing import ChangeT
@@ -16,25 +17,24 @@ def get_bid_short_info(bid: Bid) -> str:
     """Generates a user-friendly Ukrainian short info string for a Bid."""
     amount_str = format_currency(getattr(bid, 'value_amount', None))
     tenderer_name = getattr(bid, 'tenderer_legal_name', 'Невідомий учасник')
-    return f"Пропозиція від '{tenderer_name}' ({amount_str})"
+    return f"Пропозиція від '{tenderer_name}': ({amount_str})"
 
 def get_award_short_info(award: Award) -> str:
     """Generates a user-friendly Ukrainian short info string for an Award."""
-    amount_str = format_currency(getattr(award, 'value_amount', None))
+    amount_str = format_currency(getattr(award, 'value_amount', 'Не вказано'))
 
     bid_info = ""
     if hasattr(award, 'bid') and award.bid:
         bid_tenderer = getattr(award.bid, 'tenderer_legal_name', 'Невідомий учасник')
         bid_info = f" (для пропозиції '{bid_tenderer}')"
-    # Using award.title if it exists, otherwise fallback
+
     award_title = getattr(award, 'title', f'Нагорода ID: {award.id}')
-    return f"{award_title} ({amount_str}){bid_info}"
+    return f"{award_title} ({amount_str});{bid_info}"
 
 def get_document_short_info(doc: TenderDocument) -> str:
     """Generates a user-friendly Ukrainian short info string for a TenderDocument."""
     title = getattr(doc, 'title', 'Без назви')
-    doc_format = getattr(doc, 'format')
-    return f"Документ: '{title}.{doc_format}'"
+    return f"Документ: {title}"
 
 def get_complaint_short_info(complaint: Complaint) -> str:
     """Generates a user-friendly Ukrainian short info string for a Complaint."""
@@ -46,8 +46,11 @@ def get_complaint_short_info(complaint: Complaint) -> str:
 def get_tender_short_info(tender: Tender) -> str:
     """Generates a user-friendly Ukrainian short info string for a Tender."""
     title = getattr(tender, 'title', 'Без назви')
-    amount_str = format_currency(getattr(tender, 'value_amount', None))
-    return f"Тендер: '{title}' ({amount_str})"
+    title_str = title[:50] if len(title) > 50 else title
+    value_amount = getattr(tender, 'value_amount', None)
+    value_currency = getattr(tender, 'value_currency', 'UAH')
+    amount_str = format_currency(value_amount, value_currency) if value_amount else "Вартість не вказано"
+    return f"Тендер: '{title_str}...' ({amount_str})"
 
 # Dictionary mapping model types to their short info functions
 ENTITY_SHORT_INFO_FORMATTERS: Dict[Type, Callable[[Any], str]] = {
