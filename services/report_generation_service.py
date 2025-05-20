@@ -1,12 +1,12 @@
 import logging
 from collections import defaultdict
-from datetime import datetime
-from typing import Dict
+from datetime import datetime, timezone
+from typing import Dict, Optional
 
 from sqlalchemy.orm import Session
 
 from models import TenderChange, BidChange, AwardChange, ComplaintChange, \
-    TenderDocumentChange
+    TenderDocumentChange, Tender, Bid, Award, TenderDocument, Complaint
 from repositories.change_repository import ChangeRepository
 from repositories.tender_repository import TenderRepository
 from util.report_helpers import get_entity_short_info
@@ -21,109 +21,89 @@ class ReportGenerationService:
         self.change_repo = ChangeRepository(session)
         self.tender_repo = TenderRepository(session)
 
-    def generate_tender_report(self, tender_id: str, new_since: datetime,
-                               changes_since: datetime = datetime.min) -> Dict:
+    def generate_tender_report(self, tender_id: str,
+                               new_since: Optional[datetime] = None,
+                               changes_since: Optional[datetime] = None,
+                               fetch_new_entities: bool = True,
+                               fetch_entity_changes: bool = True) -> Dict:
         """
-        Generates a structured report dictionary for a specific tender, focusing on
-        new entities and changes since a given date.
+        Generates a structured report dictionary for a specific tender.
+        - 'new_since': Filters for entities created after this date (if fetch_new_entities is True).
+        - 'changes_since': Filters for changes recorded after this date (if fetch_entity_changes is True).
+        - 'fetch_new_entities': Whether to include newly created entities.
+        - 'fetch_entity_changes': Whether to include historical changes to entities and the tender itself.
         """
-        logger.info(f"Generating report for tender {tender_id} since {new_since}")
+        logger.info(
+            f"Generating report for tender {tender_id} (new_since={new_since}, changes_since={changes_since}, "
+            f"fetch_new={fetch_new_entities}, fetch_changes={fetch_entity_changes})"
+        )
 
         new_since_utc = ensure_utc_aware(new_since)
         tender = self.tender_repo.get_tender_with_relations(tender_id)
-
-        tender_info = get_entity_short_info(tender)
 
         if not tender:
             logger.warning(f"Tender with ID {tender_id} not found.")
             raise ValueError(f"Tender with ID {tender_id} not found.")
 
-        tender_changes = self.change_repo.get_changes_since(TenderChange, tender_id, changes_since)
-        bid_changes = self.change_repo.get_changes_since(BidChange, tender_id, changes_since)
-        award_changes = self.change_repo.get_changes_since(AwardChange, tender_id, changes_since)
-        document_changes = self.change_repo.get_changes_since(TenderDocumentChange, tender_id, changes_since)
-        complaint_changes = self.change_repo.get_changes_since(ComplaintChange, tender_id, changes_since)
+        tender_info_str = get_entity_short_info(tender)
 
-        new_bids = [
-            b for b in tender.bids if
-            hasattr(b, 'date') and b.date and
-            ensure_utc_aware(b.date) > new_since_utc
-        ]
-        new_awards = [
-            a for a in tender.awards if
-            hasattr(a, 'award_date') and a.award_date and
-            ensure_utc_aware(a.award_date) > new_since_utc
-        ]
-        new_documents = [
-            d for d in tender.documents if
-            hasattr(d, 'date_published') and d.date_published and
-            ensure_utc_aware(d.date_published) > new_since_utc
-        ]
-        new_complaints = [
-            c for c in tender.complaints if
-            hasattr(c, 'date_submitted') and c.date_submitted and
-            ensure_utc_aware(c.date_submitted) > new_since_utc
-        ]
-
-
-        bid_map = {b.id: b for b in tender.bids}
-        award_map = {a.id: a for a in tender.awards}
-        doc_map = {d.id: d for d in tender.documents}
-        complaint_map = {c.id: c for c in tender.complaints}
-
-        # Group changes by entity type
-        bid_entity_changes = defaultdict(lambda: {"info": "", "changes": []})
-        award_entity_changes = defaultdict(lambda: {"info": "", "changes": []})
-        doc_entity_changes = defaultdict(lambda: {"info": "", "changes": []})
-        complaint_entity_changes = defaultdict(lambda: {"info": "", "changes": []})
-
-        for change in bid_changes:
-            if change.bid_id in bid_map:
-                bid_obj = bid_map[change.bid_id]
-                if not bid_entity_changes[change.bid_id]["info"]:
-                     bid_entity_changes[change.bid_id]["info"] = get_entity_short_info(bid_obj)
-                bid_entity_changes[change.bid_id]["changes"].append(change)
-
-        for change in award_changes:
-            if change.award_id in award_map:
-                award_obj = award_map[change.award_id]
-                if not award_entity_changes[change.award_id]["info"]:
-                    award_entity_changes[change.award_id]["info"] = get_entity_short_info(award_obj)
-                award_entity_changes[change.award_id]["changes"].append(change)
-
-        for change in document_changes:
-             if change.document_id in doc_map:
-                 doc_obj = doc_map[change.document_id]
-                 if not doc_entity_changes[change.document_id]["info"]:
-                     doc_entity_changes[change.document_id]["info"] = get_entity_short_info(doc_obj)
-                 doc_entity_changes[change.document_id]["changes"].append(change)
-
-        for change in complaint_changes:
-            complaint_obj = complaint_map.get(change.complaint_id)
-            if change.complaint_id in complaint_map:
-                if not complaint_entity_changes[change.complaint_id]["info"]:
-                    complaint_entity_changes[change.complaint_id]["info"] = get_entity_short_info(complaint_obj)
-                complaint_entity_changes[change.complaint_id]["changes"].append(change)
-
-
-
-        # Structure the report data
         report_data = {
-            "tender_info": tender_info,
-            "tender_changes": tender_changes,
-            "new_entities": {
-                "bids": new_bids,
-                "awards": new_awards,
-                "documents": new_documents,
-                "complaints": new_complaints,
-            },
-            "entity_changes": {
-                "bids": bid_entity_changes,
-                "awards": award_entity_changes,
-                "documents": doc_entity_changes,
-                "complaints": complaint_entity_changes,
-            }
+            "tender_info": tender_info_str,
+            "new_entities": defaultdict(list),
+            "tender_changes": [],
+            "entity_changes": defaultdict(lambda: defaultdict(lambda: {"info": "", "changes": []})),
         }
+
+        if fetch_entity_changes:
+            actual_changes_since = ensure_utc_aware(
+                changes_since if changes_since else datetime.min.replace(tzinfo=timezone.utc))
+            report_data["tender_changes"] = self.change_repo.get_changes_since(
+                TenderChange, tender_id, actual_changes_since
+            )
+
+            change_map_config = [
+                (BidChange, "bid_id", tender.bids, "bids", Bid),
+                (AwardChange, "award_id", tender.awards, "awards", Award),
+                (TenderDocumentChange, "document_id", tender.documents, "documents", TenderDocument),
+                (ComplaintChange, "complaint_id", tender.complaints, "complaints", Complaint),
+            ]
+
+            for ChangeModel, entity_id_field, entity_list, report_key, EntityClassModel in change_map_config:
+                changes = self.change_repo.get_changes_since(ChangeModel, tender_id, actual_changes_since)
+                entity_map = {getattr(e, 'id'): e for e in entity_list}
+                current_entity_changes = defaultdict(lambda: {"info": "", "changes": []})
+
+                for change in changes:
+                    entity_id = getattr(change, entity_id_field)
+                    if entity_id in entity_map:
+                        entity_obj = entity_map[entity_id]
+                        if not current_entity_changes[entity_id]["info"]:
+                            current_entity_changes[entity_id]["info"] = get_entity_short_info(entity_obj)
+                        current_entity_changes[entity_id]["changes"].append(change)
+                if current_entity_changes:
+                    report_data["entity_changes"][report_key] = current_entity_changes
+
+        if fetch_new_entities:
+            if not new_since:
+                logger.warning(
+                    "fetch_new_entities is True, but new_since is not provided. No new entities will be reported.")
+            else:
+                new_since_utc = ensure_utc_aware(new_since)
+
+                new_entity_configs = [
+                    (tender.bids, 'date', "bids"),
+                    (tender.awards, 'award_date', "awards"),
+                    (tender.documents, 'date_published', "documents"),
+                    (tender.complaints, 'date_submitted', "complaints"),
+                ]
+
+                for entity_list, date_attr, report_key in new_entity_configs:
+                    new_items = [
+                        item for item in entity_list if
+                        hasattr(item, date_attr) and getattr(item, date_attr) and
+                        ensure_utc_aware(getattr(item, date_attr)) > new_since_utc
+                    ]
+                    report_data["new_entities"][report_key] = [get_entity_short_info(item) for item in new_items]
 
         logger.info(f"Report generated successfully for tender {tender_id}")
         return report_data
