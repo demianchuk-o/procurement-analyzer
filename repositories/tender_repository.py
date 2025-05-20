@@ -73,7 +73,7 @@ class TenderRepository(BaseRepository[Tender]):
         :return: A tuple containing a list of dictionaries with tender information
                  and the total number of tenders.
         """
-        query = self._session.query(Tender.id, Tender.date_modified, Tender.title)
+        query = self._session.query(Tender.id, Tender.date_modified, Tender.title).order_by(Tender.date_modified.desc())
         total = query.count()  # Get total count before pagination
         short_data = query.offset((page - 1) * per_page).limit(per_page).all()
 
