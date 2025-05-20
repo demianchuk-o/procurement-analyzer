@@ -1,17 +1,17 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy.orm import Session
 
 from models.typing import ChangeT
 from repositories.base_datasource import BaseDatasource
-
+from util.datetime_utils import ensure_utc_aware
 
 class ChangeRepository(BaseDatasource):
     def __init__(self, session: Session):
         super().__init__(session)
 
-    def get_changes_since(self, change_cls: ChangeT, tender_id: str, since_date: Optional[datetime] = None) -> List:
+    def get_changes_since(self, change_cls: ChangeT, tender_id: str, since_date: datetime) -> List:
         """
         Retrieves changes for a specific tender since a given date.
 
@@ -26,8 +26,9 @@ class ChangeRepository(BaseDatasource):
         query = self._session.query(change_cls).filter(
             change_cls.tender_id == tender_id,
         )
-        if since_date:
-            query = query.filter(change_cls.change_date > since_date)
+
+        since_date_utc = ensure_utc_aware(since_date)
+        query = query.filter(change_cls.change_date > since_date_utc)
 
         changes = query.all()
         return changes
