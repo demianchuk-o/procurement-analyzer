@@ -24,11 +24,11 @@ app.conf.beat_schedule = {
     },
     'sync-all-tenders': {
         'task': 'tasks.sync_all_tenders_task',
-        'schedule': crontab(minute='*/30'),
+        'schedule': crontab(minute='1-59/15'),
     },
     'send-notifications': {
         'task': 'tasks.send_notifications_task',
-        'schedule': crontab(minute='*/30'),
+        'schedule': crontab(minute='2-59/15'),
     },
 }
 
