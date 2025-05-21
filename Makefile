@@ -1,6 +1,6 @@
 PROJECT_NAME := integration_tests
 
-INTEGRATION_TEST_COMMAND := docker-compose -p $(PROJECT_NAME) -f docker-compose.yml -f docker-compose.integration.yml up --build --exit-code-from test
+INTEGRATION_TEST_COMMAND := docker-compose -p $(PROJECT_NAME) -f docker-compose.integration.yml up --build --exit-code-from test test
 
 integration-test:
 	@echo "Starting integration tests..."
@@ -9,7 +9,7 @@ integration-test:
 
 integration-clean:
 	@echo "Cleaning up integration test environment..."
-	docker-compose -p $(PROJECT_NAME) -f docker-compose.yml -f docker-compose.integration.yml down -v --remove-orphans
+	docker-compose -p $(PROJECT_NAME) -f docker-compose.integration.yml down -v --remove-orphans
 	@echo "Clean up complete."
 
 .DEFAULT_GOAL := integration-test

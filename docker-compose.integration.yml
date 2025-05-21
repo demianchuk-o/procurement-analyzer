@@ -5,58 +5,29 @@ services:
     build: .
     command: pytest -v tests/integration
     depends_on:
-      web:
-        condition: service_started
-      db:
+      test-db:
         condition: service_healthy
-      redis:
-        condition: service_started
     environment:
+      - SQLALCHEMY_DATABASE_URI=${TEST_DATABASE_URL}
       - DATABASE_URL=${TEST_DATABASE_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
       - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - PYTHONPATH=.
     volumes:
       - .:/app
     working_dir: /app
 
-  web:
-    build: .
-    ports:
-      - "5000:5000"
-    depends_on:
-      db:
-        condition: service_healthy
+  test-db:
+    image: postgres:14
+    restart: always
     environment:
-      - DATABASE_URL=${TEST_DATABASE_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
-      - SECRET_KEY=${SECRET_KEY}
-
-  db:
-    extends:
-      file: docker-compose.yml
-      service: db
-    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${TEST_DB_NAME}
-
-  redis:
-    extends:
-      file: docker-compose.yml
-      service: redis
-
-  celery:
-    build: .
-    command: celery -A celery_app worker --loglevel=INFO
-    depends_on:
-      web:
-        condition: service_started
-      redis:
-        condition: service_started
-      db:
-        condition: service_healthy
-    environment:
-      - DATABASE_URL=${TEST_DATABASE_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${TEST_DB_NAME}']
+      interval: 10s
+      timeout: 5s
+      retries: 5

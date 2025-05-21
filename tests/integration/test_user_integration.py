@@ -1,4 +1,5 @@
 import pytest
+from flask import url_for
 from sqlalchemy.orm.exc import NoResultFound
 from datetime import datetime, timezone
 
@@ -81,21 +82,20 @@ class TestUserIntegration(BaseIntegrationTest):
         with pytest.raises(ValueError):
             auth_service.register_user(email, password)
 
-
-    def test_user_login_success(self, auth_service, user_repository, password_service):
-        """Test successful login."""
+    def test_user_login_success(self, app, user_repository, auth_service, password_service):
         # Arrange
         email = "login_user@example.com"
         password = "password"
-        test_user = self.create_test_user(user_repository, email=email)
+        self.create_test_user(user_repository, email=email)
 
         # Act
-        access_token, user = auth_service.login(email, password)
+        with app.test_request_context():
+            response = auth_service.login(email, password)
 
         # Assert
-        assert user is not None
-        assert user.id == test_user.id
-        assert access_token is not None
+        assert response.status_code == 302
+        assert response.location == "/index"
+        assert "access_token_cookie=" in response.headers.get("Set-Cookie", "")
 
     def test_user_login_incorrect_password(self, auth_service, user_repository):
         """Test login with incorrect password."""
