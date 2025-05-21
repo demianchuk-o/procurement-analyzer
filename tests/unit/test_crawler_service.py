@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -7,6 +7,7 @@ from repositories.tender_repository import TenderRepository
 from services.crawler_service import CrawlerService
 
 
+@patch('services.crawler_service.process_tender_data_task')
 class TestCrawlerService:
 
     @pytest.fixture
@@ -18,199 +19,180 @@ class TestCrawlerService:
         return MagicMock()
 
     @pytest.fixture
-    def mock_legacy_client(self):
-        return MagicMock()
-
-    @pytest.fixture
-    def mock_data_processor(self):
-        return MagicMock()
-
-    @pytest.fixture
-    def crawler_service(self, mock_tender_repo, mock_discovery_client, mock_legacy_client, mock_data_processor):
+    def crawler_service(self, mock_tender_repo, mock_discovery_client):
         service = CrawlerService(tender_repo=mock_tender_repo)
         service.discovery_client = mock_discovery_client
-        service.legacy_client = mock_legacy_client
-        service.data_processor = mock_data_processor
         return service
 
-    def test_sync_single_tender_success(self, crawler_service, mock_tender_repo, mock_discovery_client, mock_legacy_client, mock_data_processor):
-        """Test successful sync of a single tender."""
+    def test_sync_single_tender_success(self, mock_process_task, crawler_service, mock_tender_repo,
+                                        mock_discovery_client):
+        """Test successful sync of a single tender that is new or needs update."""
         # Arrange
+        tender_ocid = 'tender_ocid_1'
+        tender_uuid = 'tender_uuid_1'
+        date_modified = datetime(2025, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+        classifier_data = {'scheme': 'scheme_A', 'description': 'description_A', 'id': 'classifier_id_A'}
+
         mock_discovery_client.fetch_tender_bridge_info.return_value = {
-            'id': 'tender_uuid',
-            'dateModified': datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            'generalClassifier': {'scheme': 'scheme', 'description': 'description'}
+            'id': tender_uuid,
+            'dateModified': date_modified,
+            'generalClassifier': classifier_data,
+            'tenderID': tender_ocid
         }
-        mock_tender_repo.get_by_id.return_value = None
-        mock_tender_repo.find_general_classifier.return_value = None
-        mock_tender_repo.create_general_classifier.return_value = MagicMock(id=1)
-        mock_legacy_client.fetch_tender_details.return_value = {'key': 'value'}
-        mock_data_processor.process_tender_data.return_value = True
+
+        mock_tender_repo.get_short_by_uuid.return_value = None
 
         # Act
-        result = crawler_service.sync_single_tender('tender_ocid')
+        crawler_service.sync_single_tender(tender_ocid)
 
         # Assert
-        assert result is True
-        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with('tender_ocid')
-        mock_tender_repo.get_by_id.assert_called_once_with('tender_uuid')
-        mock_tender_repo.find_general_classifier.assert_called_once_with(scheme='scheme', description='description')
-        mock_tender_repo.create_general_classifier.assert_called_once_with(scheme='scheme', description='description')
-        mock_legacy_client.fetch_tender_details.assert_called_once_with('tender_uuid')
-        mock_data_processor.process_tender_data.assert_called_once_with(
-            tender_uuid='tender_uuid',
-            tender_ocid='tender_ocid',
-            date_modified_utc=datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            general_classifier_id=1,
-            legacy_details={'key': 'value'}
+        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with(tender_ocid)
+        mock_tender_repo.get_short_by_uuid.assert_called_once_with(tender_uuid)
+        mock_process_task.apply_async.assert_called_once_with(
+            args=(tender_uuid, tender_ocid, date_modified, classifier_data),
+            queue='default',
+            priority=0
         )
-        mock_tender_repo.commit.assert_called_once()
 
-    def test_sync_single_tender_no_bridge_info(self, crawler_service, mock_discovery_client):
+    def test_sync_single_tender_no_bridge_info(self, mock_process_task, crawler_service, mock_discovery_client):
         """Test when discovery client returns no bridge info."""
         # Arrange
+        tender_ocid = 'tender_ocid_2'
         mock_discovery_client.fetch_tender_bridge_info.return_value = None
 
         # Act
-        result = crawler_service.sync_single_tender('tender_ocid')
+        crawler_service.sync_single_tender(tender_ocid)
 
         # Assert
-        assert result is False
-        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with('tender_ocid')
+        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with(tender_ocid)
+        mock_process_task.apply_async.assert_not_called()
 
-    def test_sync_single_tender_missing_data_in_bridge_info(self, crawler_service, mock_discovery_client):
+    def test_sync_single_tender_missing_data_in_bridge_info(self, mock_process_task, crawler_service,
+                                                            mock_discovery_client):
         """Test when bridge info is missing UUID or dateModified."""
         # Arrange
-        mock_discovery_client.fetch_tender_bridge_info.return_value = {}
+        tender_ocid = 'tender_ocid_3'
+        # Missing 'id' and 'dateModified'
+        mock_discovery_client.fetch_tender_bridge_info.return_value = {'tenderID': tender_ocid}
 
         # Act
-        result = crawler_service.sync_single_tender('tender_ocid')
+        crawler_service.sync_single_tender(tender_ocid)
 
         # Assert
-        assert result is False
-        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with('tender_ocid')
+        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with(tender_ocid)
+        mock_process_task.apply_async.assert_not_called()
 
-    def test_sync_single_tender_tender_unchanged(self, crawler_service, mock_tender_repo, mock_discovery_client):
+    def test_sync_single_tender_tender_unchanged(self, mock_process_task, crawler_service, mock_tender_repo,
+                                                 mock_discovery_client):
         """Test when the tender has not been modified since the last sync."""
         # Arrange
+        tender_ocid = 'tender_ocid_4'
+        tender_uuid = 'tender_uuid_4'
+        # Date from bridge is same or older than in DB
+        date_modified_in_bridge = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        date_modified_in_db = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+
         mock_discovery_client.fetch_tender_bridge_info.return_value = {
-            'id': 'tender_uuid',
-            'dateModified': datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            'generalClassifier': {'scheme': 'scheme', 'description': 'description'}
+            'id': tender_uuid,
+            'dateModified': date_modified_in_bridge,
+            'generalClassifier': {'scheme': 's', 'description': 'd', 'id': 'id'},
+            'tenderID': tender_ocid
         }
-        mock_tender_repo.get_by_id.return_value = MagicMock(date_modified=datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
+        mock_tender_repo.get_short_by_uuid.return_value = {
+            'date_modified': date_modified_in_db
+        }
 
         # Act
-        result = crawler_service.sync_single_tender('tender_ocid')
+        crawler_service.sync_single_tender(tender_ocid)
 
         # Assert
-        assert result is True
-        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with('tender_ocid')
-        mock_tender_repo.get_by_id.assert_called_once_with('tender_uuid')
+        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with(tender_ocid)
+        mock_tender_repo.get_short_by_uuid.assert_called_once_with(tender_uuid)
+        mock_process_task.apply_async.assert_not_called()
 
-    def test_sync_single_tender_legacy_details_fetch_failure(self, crawler_service, mock_tender_repo, mock_discovery_client, mock_legacy_client):
-        """Test when fetching legacy details fails."""
+    def test_sync_single_tender_older_in_db_triggers_sync(self, mock_process_task, crawler_service, mock_tender_repo,
+                                                          mock_discovery_client):
+        """Test when the tender in DB is older, sync should be triggered."""
         # Arrange
+        tender_ocid = 'tender_ocid_5'
+        tender_uuid = 'tender_uuid_5'
+        date_modified_in_bridge = datetime(2025, 1, 2, 0, 0, 0, tzinfo=timezone.utc)
+        date_modified_in_db = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # Older
+        classifier_data = {'scheme': 's', 'description': 'd', 'id': 'id'}
+
         mock_discovery_client.fetch_tender_bridge_info.return_value = {
-            'id': 'tender_uuid',
-            'dateModified': datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            'generalClassifier': {'scheme': 'scheme', 'description': 'description'}
+            'id': tender_uuid,
+            'dateModified': date_modified_in_bridge,
+            'generalClassifier': classifier_data,
+            'tenderID': tender_ocid
         }
-        mock_tender_repo.get_by_id.return_value = None
-        mock_tender_repo.find_general_classifier.return_value = None
-        mock_tender_repo.create_general_classifier.return_value = MagicMock(id=1)
-        mock_legacy_client.fetch_tender_details.return_value = None
+        mock_tender_repo.get_short_by_uuid.return_value = {
+            'date_modified': date_modified_in_db
+        }
 
         # Act
-        result = crawler_service.sync_single_tender('tender_ocid')
+        crawler_service.sync_single_tender(tender_ocid, high_priority=True)
 
         # Assert
-        assert result is False
-        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with('tender_ocid')
-        mock_tender_repo.get_by_id.assert_called_once_with('tender_uuid')
-        mock_tender_repo.find_general_classifier.assert_called_once_with(scheme='scheme', description='description')
-        mock_tender_repo.create_general_classifier.assert_called_once_with(scheme='scheme', description='description')
-        mock_legacy_client.fetch_tender_details.assert_called_once_with('tender_uuid')
-        mock_tender_repo.rollback.assert_called_once()
-
-    def test_sync_single_tender_data_processor_failure(self, crawler_service, mock_tender_repo, mock_discovery_client, mock_legacy_client, mock_data_processor):
-        """Test when the data processor fails."""
-        # Arrange
-        mock_discovery_client.fetch_tender_bridge_info.return_value = {
-            'id': 'tender_uuid',
-            'dateModified': datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            'generalClassifier': {'scheme': 'scheme', 'description': 'description'}
-        }
-        mock_tender_repo.get_by_id.return_value = None
-        mock_tender_repo.find_general_classifier.return_value = None
-        mock_tender_repo.create_general_classifier.return_value = MagicMock(id=1)
-        mock_legacy_client.fetch_tender_details.return_value = {'key': 'value'}
-        mock_data_processor.process_tender_data.return_value = False
-
-        # Act
-        result = crawler_service.sync_single_tender('tender_ocid')
-
-        # Assert
-        assert result is False
-        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with('tender_ocid')
-        mock_tender_repo.get_by_id.assert_called_once_with('tender_uuid')
-        mock_tender_repo.find_general_classifier.assert_called_once_with(scheme='scheme', description='description')
-        mock_tender_repo.create_general_classifier.assert_called_once_with(scheme='scheme', description='description')
-        mock_legacy_client.fetch_tender_details.assert_called_once_with('tender_uuid')
-        mock_data_processor.process_tender_data.assert_called_once_with(
-            tender_uuid='tender_uuid',
-            tender_ocid='tender_ocid',
-            date_modified_utc=datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            general_classifier_id=1,
-            legacy_details={'key': 'value'}
+        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with(tender_ocid)
+        mock_tender_repo.get_short_by_uuid.assert_called_once_with(tender_uuid)
+        mock_process_task.apply_async.assert_called_once_with(
+            args=(tender_uuid, tender_ocid, date_modified_in_bridge, classifier_data),
+            queue='default',
+            priority=5  # high_priority = True
         )
 
-    def test_sync_subscribed_tenders_success(self, crawler_service, mock_tender_repo):
-        """Test successful sync of subscribed tenders."""
+    def test_sync_single_tender_schedules_task_for_new_tender(self, mock_process_task, crawler_service,
+                                                              mock_tender_repo, mock_discovery_client):
+        """Test that task is scheduled for a new tender (not in DB)."""
         # Arrange
-        mock_tender_repo.get_subscribed_tender_ocids.return_value = ['tender_ocid_1', 'tender_ocid_2']
-        crawler_service.sync_single_tender = MagicMock(return_value=True)
+        tender_ocid = 'tender_ocid_6'
+        tender_uuid = 'tender_uuid_6'
+        date_modified = datetime(2025, 1, 3, 0, 0, 0, tzinfo=timezone.utc)
+        classifier_data = {'scheme': 's', 'description': 'd', 'id': 'id'}
+
+        mock_discovery_client.fetch_tender_bridge_info.return_value = {
+            'id': tender_uuid,
+            'dateModified': date_modified,
+            'generalClassifier': classifier_data,
+            'tenderID': tender_ocid
+        }
+        mock_tender_repo.get_short_by_uuid.return_value = None  # Tender not in DB
 
         # Act
-        result = crawler_service.sync_subscribed_tenders()
+        crawler_service.sync_single_tender(tender_ocid)
 
         # Assert
-        assert result == 2
-        mock_tender_repo.get_subscribed_tender_ocids.assert_called_once()
-        crawler_service.sync_single_tender.assert_has_calls([call('tender_ocid_1'), call('tender_ocid_2')])
+        mock_discovery_client.fetch_tender_bridge_info.assert_called_once_with(tender_ocid)
+        mock_tender_repo.get_short_by_uuid.assert_called_once_with(tender_uuid)
+        mock_process_task.apply_async.assert_called_once_with(
+            args=(tender_uuid, tender_ocid, date_modified, classifier_data),
+            queue='default',
+            priority=0
+        )
 
-    def test_sync_subscribed_tenders_error(self, crawler_service, mock_tender_repo):
-        """Test when an error occurs during the sync of subscribed tenders."""
-        # Arrange
-        mock_tender_repo.get_subscribed_tender_ocids.return_value = ['tender_ocid_1', 'tender_ocid_2']
-        crawler_service.sync_single_tender = MagicMock(side_effect=[True, Exception('Sync error')])
-
-        # Act
-        result = crawler_service.sync_subscribed_tenders()
-
-        # Assert
-        assert result == 1
-        mock_tender_repo.get_subscribed_tender_ocids.assert_called_once()
-        assert crawler_service.sync_single_tender.call_count == 2
-
-    def test_crawl_tenders_success(self, crawler_service, mock_discovery_client):
+    def test_crawl_tenders_success(self, mock_process_task, crawler_service,
+                                   mock_discovery_client):
         """Test successful crawl of tenders."""
         # Arrange
-        mock_discovery_client.fetch_search_page_tender_ids.return_value = ['tender_ocid_1', 'tender_ocid_2']
-        crawler_service.sync_single_tender = MagicMock(return_value=True)
+        mock_discovery_client.fetch_search_page_tender_ids.return_value = ['tender_ocid_A', 'tender_ocid_B']
+
+        # avoid calling the actual sync_single_tender method
+        crawler_service.sync_single_tender = MagicMock()
 
         # Act
         result = crawler_service.crawl_tenders(pages_to_crawl=1)
 
         # Assert
-        assert result == 2
+        assert result == 2  # Processed count
         mock_discovery_client.fetch_search_page_tender_ids.assert_called_once_with(page=0)
-        crawler_service.sync_single_tender.assert_has_calls([call('tender_ocid_1'), call('tender_ocid_2')])
+        crawler_service.sync_single_tender.assert_has_calls([call('tender_ocid_A'), call('tender_ocid_B')])
 
-    def test_crawl_tenders_no_tenders_found(self, crawler_service, mock_discovery_client):
+    def test_crawl_tenders_no_tenders_found(self, mock_process_task, crawler_service, mock_discovery_client):
         """Test when no tenders are found on a search page."""
         # Arrange
         mock_discovery_client.fetch_search_page_tender_ids.return_value = []
+        crawler_service.sync_single_tender = MagicMock()
 
         # Act
         result = crawler_service.crawl_tenders(pages_to_crawl=1)
@@ -218,11 +200,13 @@ class TestCrawlerService:
         # Assert
         assert result == 0
         mock_discovery_client.fetch_search_page_tender_ids.assert_called_once_with(page=0)
+        crawler_service.sync_single_tender.assert_not_called()
 
-    def test_crawl_tenders_discovery_client_failure(self, crawler_service, mock_discovery_client):
+    def test_crawl_tenders_discovery_client_failure(self, mock_process_task, crawler_service, mock_discovery_client):
         """Test when the discovery client fails to fetch a search page."""
         # Arrange
         mock_discovery_client.fetch_search_page_tender_ids.return_value = None
+        crawler_service.sync_single_tender = MagicMock()
 
         # Act
         result = crawler_service.crawl_tenders(pages_to_crawl=1)
@@ -230,52 +214,56 @@ class TestCrawlerService:
         # Assert
         assert result == 0
         mock_discovery_client.fetch_search_page_tender_ids.assert_called_once_with(page=0)
+        crawler_service.sync_single_tender.assert_not_called()
 
-    def test_crawl_tenders_sync_single_tender_failure(self, crawler_service, mock_discovery_client):
-        """Test when syncing a single tender fails during the crawl."""
+    def test_crawl_tenders_iterates_and_counts_all_found_ocids(self, mock_process_task, crawler_service,
+                                                               mock_discovery_client):
+        """
+        Test that crawl_tenders processes all OCIDs found,
+        and processed_count reflects the number of sync attempts.
+        """
         # Arrange
-        mock_discovery_client.fetch_search_page_tender_ids.return_value = ['tender_ocid_1', 'tender_ocid_2']
-        crawler_service.sync_single_tender = MagicMock(side_effect=[True, False])
+        mock_discovery_client.fetch_search_page_tender_ids.return_value = ['tender_ocid_X', 'tender_ocid_Y']
+        # mock sync_single_tender to avoid actual processing
+        crawler_service.sync_single_tender = MagicMock()
 
         # Act
         result = crawler_service.crawl_tenders(pages_to_crawl=1)
 
         # Assert
-        assert result == 1
+        assert result == 2  # Should process both OCIDs found
         mock_discovery_client.fetch_search_page_tender_ids.assert_called_once_with(page=0)
         assert crawler_service.sync_single_tender.call_count == 2
+        crawler_service.sync_single_tender.assert_has_calls([call('tender_ocid_X'), call('tender_ocid_Y')])
 
-    def test_find_or_create_general_classifier_existing(self, crawler_service, mock_tender_repo):
-        """Test when a general classifier already exists."""
+    def test_sync_all_tenders_success(self, mock_process_task, crawler_service, mock_tender_repo):
+        """Test syncing all active tenders from the repository."""
         # Arrange
-        mock_tender_repo.find_general_classifier.return_value = MagicMock(id=1)
+        active_ocids = ['ocid_db_1', 'ocid_db_2']
+        mock_tender_repo.get_active_tender_ocids.return_value = active_ocids
+
+        crawler_service.sync_single_tender = MagicMock()
 
         # Act
-        result = crawler_service._find_or_create_general_classifier({'scheme': 'scheme', 'description': 'description'})
+        result = crawler_service.sync_all_tenders()
 
         # Assert
-        assert result == 1
-        mock_tender_repo.find_general_classifier.assert_called_once_with(scheme='scheme', description='description')
-        mock_tender_repo.create_general_classifier.assert_not_called()
+        assert result == len(active_ocids)
+        mock_tender_repo.get_active_tender_ocids.assert_called_once()
+        crawler_service.sync_single_tender.assert_has_calls(
+            [call(ocid) for ocid in active_ocids], any_order=False
+        )
 
-    def test_find_or_create_general_classifier_new(self, crawler_service, mock_tender_repo):
-        """Test when a general classifier needs to be created."""
+    def test_sync_all_tenders_no_active_tenders(self, mock_process_task, crawler_service, mock_tender_repo):
+        """Test syncing when no active tenders are in the repository."""
         # Arrange
-        mock_tender_repo.find_general_classifier.return_value = None
-        mock_tender_repo.create_general_classifier.return_value = MagicMock(id=2)
+        mock_tender_repo.get_active_tender_ocids.return_value = []
+        crawler_service.sync_single_tender = MagicMock()
 
         # Act
-        result = crawler_service._find_or_create_general_classifier({'scheme': 'scheme', 'description': 'description'})
+        result = crawler_service.sync_all_tenders()
 
         # Assert
-        assert result == 2
-        mock_tender_repo.find_general_classifier.assert_called_once_with(scheme='scheme', description='description')
-        mock_tender_repo.create_general_classifier.assert_called_once_with(scheme='scheme', description='description')
-
-    def test_find_or_create_general_classifier_missing_data(self, crawler_service):
-        """Test when the classifier data is missing scheme or description."""
-        # Arrange & Act
-        result = crawler_service._find_or_create_general_classifier({})
-
-        # Assert
-        assert result is None
+        assert result == 0
+        mock_tender_repo.get_active_tender_ocids.assert_called_once()
+        crawler_service.sync_single_tender.assert_not_called()
