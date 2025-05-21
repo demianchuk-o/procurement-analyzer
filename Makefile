@@ -1,6 +1,6 @@
 PROJECT_NAME := integration_tests
 
-INTEGRATION_TEST_COMMAND := docker-compose -p $(PROJECT_NAME) -f docker-compose.integration.yml up --build --exit-code-from test
+INTEGRATION_TEST_COMMAND := docker-compose -p $(PROJECT_NAME) -f docker-compose.integration.yml up --build --exit-code-from test test
 
 integration-test:
 	@echo "Starting integration tests..."
