@@ -38,7 +38,7 @@ def process_tender_data_task(tender_uuid: str,
     with app.app_context(), session_scope() as session:
         try:
             tender_repo = TenderRepository(session)
-            data_processor = DataProcessor(tender_repo)
+            data_processor = DataProcessor(tender_repo, high_priority)
 
             general_classifier_id = tender_repo.get_or_create_general_classifier_id(classifier_data)
             if classifier_data and not general_classifier_id:
