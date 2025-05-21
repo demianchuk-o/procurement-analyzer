@@ -322,7 +322,7 @@ class DataProcessor:
 
                 self._update_entity(
                     existing_entity=target_tender,
-                    tender_uuid=tender_uuid
+                    tender_uuid=tender_uuid,
                     new_data_obj=loaded_tender,
                     fields_to_check=tender_fields,
                     change_model_cls=TenderChange,
