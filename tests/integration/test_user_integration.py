@@ -82,19 +82,19 @@ class TestUserIntegration(BaseIntegrationTest):
         with pytest.raises(ValueError):
             auth_service.register_user(email, password)
 
-    def test_user_login_success(self, user_repository, auth_service, password_service):
+    def test_user_login_success(self, app, user_repository, auth_service, password_service):
         # Arrange
         email = "login_user@example.com"
         password = "password"
         self.create_test_user(user_repository, email=email)
 
         # Act
-        response = auth_service.login(email, password)
+        with app.test_request_context():
+            response = auth_service.login(email, password)
 
         # Assert
-        assert response is not None
         assert response.status_code == 302
-        assert response.headers["Location"] == url_for("index")
+        assert response.location == "/index"
         assert "access_token_cookie=" in response.headers.get("Set-Cookie", "")
 
     def test_user_login_incorrect_password(self, auth_service, user_repository):
