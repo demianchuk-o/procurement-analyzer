@@ -4,8 +4,7 @@ from typing import List, Dict, Any, Optional, Type, Tuple
 from decimal import Decimal
 
 from celery_app import app as celery_app
-from marshmallow import Schema
-
+from marshmallow import Schema, ValidationError
 
 from api.legacy_prozorro_client import LegacyProzorroClient
 from models import (TenderChange, TenderDocument, TenderDocumentChange, Award, AwardChange,
@@ -92,12 +91,12 @@ class DataProcessor:
                 change_date = change_date.astimezone(timezone.utc)
 
             # format numeric values with two decimal places
-            if isinstance(old_value, (int, float)):
+            if isinstance(old_value, float):
                 old_value_str = "{:.2f}".format(old_value)
             else:
                 old_value_str = str(old_value) if old_value is not None else None
 
-            if isinstance(new_value, (int, float)):
+            if isinstance(new_value, float):
                 new_value_str = "{:.2f}".format(new_value)
             else:
                 new_value_str = str(new_value) if new_value is not None else None
@@ -162,7 +161,7 @@ class DataProcessor:
             old_value = getattr(existing_entity, field)
             new_value = getattr(new_data_obj, field)
             
-            if isinstance(old_value, (int, float, Decimal)) and isinstance(new_value, (int, float, Decimal)):
+            if isinstance(old_value, (float, Decimal)) and isinstance(new_value, (float, Decimal)):
                 old_num = Decimal(old_value).quantize(Decimal('0.01'))
                 new_num = Decimal(new_value).quantize(Decimal('0.01'))
                 is_different = old_num != new_num
@@ -218,8 +217,9 @@ class DataProcessor:
                      incoming_entities_map[loaded_obj.id] = loaded_obj
                 else:
                      self.logger.warning(f"Could not load or find ID for incoming {model_cls.__name__} data: {item_data}")
-            except Exception as e:
+            except ValidationError as e:
                 self.logger.error(f"Error loading {model_cls.__name__} with schema: {e}. Data: {item_data}", exc_info=True)
+                raise
 
 
         existing_ids_map = {getattr(e, 'id'): e for e in existing_related}
@@ -249,7 +249,6 @@ class DataProcessor:
 
         self.tender_repo.flush()
 
-
     def process_tender_data(self,
                             tender_uuid: str,
                             tender_ocid: Optional[str],
@@ -260,37 +259,39 @@ class DataProcessor:
         Manages its own transaction within the provided session.
         """
         self.logger.info(f"Processing tender UUID {tender_uuid} (OCID: {tender_ocid})")
-
-        legacy_details = self.legacy_client.fetch_tender_details(tender_uuid)
-        if not legacy_details:
-            self.logger.warning(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
-            raise Exception(f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
-
-        if not tender_uuid:
-            self.logger.error("Tender UUID is missing, cannot process.")
-            return False
+        self._new_complaint_ids.clear()
 
         try:
-            loaded_tender = self.tender_schema.load(legacy_details)
 
-            if 'value' in legacy_details and 'amount' in legacy_details['value']:
-                loaded_tender.value_amount = legacy_details['value']['amount']
+            if not tender_uuid:
+                self.logger.error("Tender UUID is missing, cannot process.")
+                raise ValueError("Tender UUID is missing")
+
+            legacy_details = self.legacy_client.fetch_tender_details(tender_uuid)
+            if not legacy_details:
+                self.logger.warning(
+                    f"Could not fetch legacy details for tender UUID {tender_uuid} (OCID {tender_ocid})")
+                raise Exception(f"Could not fetch legacy details for tender UUID {tender_uuid}")
+
+            try:
+                loaded_tender = self.tender_schema.load(legacy_details)
+                if 'value' in legacy_details and 'amount' in legacy_details['value']:
+                    loaded_tender.value_amount = legacy_details['value']['amount']
+            except ValidationError as e:
+                self.logger.error(f"Failed to load tender data with schema for UUID {tender_uuid}: {e}", exc_info=True)
+                raise
 
             if loaded_tender.id != tender_uuid:
-                 self.logger.error(f"Loaded tender ID '{loaded_tender.id}' does not match expected UUID '{tender_uuid}'. Aborting.")
-                 return False
-        except Exception as e:
-            self.logger.error(f"Failed to load tender data with schema for UUID {tender_uuid}: {e}", exc_info=True)
-            return False
+                self.logger.error(
+                    f"Loaded tender ID '{loaded_tender.id}' does not match expected UUID '{tender_uuid}'. Aborting.")
+                raise ValueError(f"Loaded tender ID '{loaded_tender.id}' does not match expected UUID '{tender_uuid}'")
 
-        try:
             if date_modified_utc.tzinfo is None:
                 date_modified_utc = date_modified_utc.replace(tzinfo=timezone.utc)
             date_modified_utc = date_modified_utc.astimezone(timezone.utc)
 
             existing_tender = self.tender_repo.get_tender_with_relations(tender_uuid)
             is_new_tender = existing_tender is None
-
 
             tender_fields = [
                 "date_created", "title", "value_amount", "status",
@@ -301,25 +302,20 @@ class DataProcessor:
 
             if is_new_tender:
                 self.logger.info(f"Creating new tender UUID {tender_uuid}")
-
-                # Explicitly set fields from discovery API
                 loaded_tender.id = tender_uuid
                 loaded_tender.ocid = tender_ocid
                 loaded_tender.date_modified = date_modified_utc
                 loaded_tender.general_classifier_id = general_classifier_id
-
                 loaded_tender.documents = []
                 loaded_tender.bids = []
                 loaded_tender.awards = []
                 loaded_tender.complaints = []
-
                 self.tender_repo.add_entity(loaded_tender)
                 self.tender_repo.flush()
                 target_tender = loaded_tender
             else:
                 self.logger.info(f"Updating existing tender UUID {tender_uuid}")
                 target_tender = existing_tender
-
                 self._update_entity(
                     existing_entity=target_tender,
                     tender_uuid=tender_uuid,
@@ -329,17 +325,16 @@ class DataProcessor:
                     change_date=date_modified_utc,
                     entity_fk_name='tender_id'
                 )
-
-
                 if target_tender.date_modified != date_modified_utc:
-                     target_tender.date_modified = date_modified_utc
+                    target_tender.date_modified = date_modified_utc
                 if target_tender.general_classifier_id != general_classifier_id:
-                     self._record_change(TenderChange, tender_uuid, 'tender_id', tender_uuid, date_modified_utc, 'general_classifier_id', target_tender.general_classifier_id, general_classifier_id)
-                     target_tender.general_classifier_id = general_classifier_id
+                    self._record_change(TenderChange, tender_uuid, 'tender_id', tender_uuid, date_modified_utc,
+                                        'general_classifier_id', target_tender.general_classifier_id,
+                                        general_classifier_id)
+                    target_tender.general_classifier_id = general_classifier_id
 
             change_date_for_related = date_modified_utc
 
-            # Sync Documents
             self._sync_related(
                 tender_id=tender_uuid,
                 existing_related=list(target_tender.documents),
@@ -351,8 +346,6 @@ class DataProcessor:
                 change_date=change_date_for_related,
                 entity_fk_name='document_id'
             )
-
-            # Sync Bids
             self._sync_related(
                 tender_id=tender_uuid,
                 existing_related=list(target_tender.bids),
@@ -364,8 +357,6 @@ class DataProcessor:
                 change_date=change_date_for_related,
                 entity_fk_name='bid_id'
             )
-
-            # Sync Awards
             self._sync_related(
                 tender_id=tender_uuid,
                 existing_related=list(target_tender.awards),
@@ -373,12 +364,11 @@ class DataProcessor:
                 schema=self.award_schema,
                 model_cls=Award,
                 change_model_cls=AwardChange,
-                fields_to_check=["status", "title", "value_amount", "award_date", "complaint_period_start_date", "complaint_period_end_date"],
+                fields_to_check=["status", "title", "value_amount", "award_date", "complaint_period_start_date",
+                                 "complaint_period_end_date"],
                 change_date=change_date_for_related,
                 entity_fk_name='award_id'
             )
-
-            # Sync Complaints
             self._sync_related(
                 tender_id=tender_uuid,
                 existing_related=list(target_tender.complaints),
@@ -400,12 +390,10 @@ class DataProcessor:
                     priority=5 if self.high_priority else 0
                 )
 
-            self._new_complaint_ids.clear()
-
             self.logger.info(f"Successfully prepared changes for tender UUID {tender_uuid}")
             return True
 
-        except Exception as e:
+        except (ValueError, ValidationError, Exception) as e:
             self.tender_repo.rollback()
             self.logger.error(f"Error during processing tender UUID {tender_uuid}: {e}", exc_info=True)
             return False
