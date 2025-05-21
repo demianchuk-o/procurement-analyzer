@@ -4,21 +4,23 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from config import Config
-from db import db
 from models import Base
 from repositories.tender_repository import TenderRepository
-from repositories.user_repository import UserRepository
-from services.auth_service import AuthService
-from services.password_service import PasswordService
-from services.user_service import UserService
 
 
 class BaseIntegrationTest:
     @pytest.fixture(scope="session")
     def app(self):
         app = Flask(__name__)
-        app.config.from_object(Config)
-        db.init_app(app)
+        app.config['JWT_SECRET_KEY'] = 'test_secret'
+        app.config['JWT_TOKEN_LOCATION'] = ['cookies']
+        app.config['JWT_COOKIE_CSRF_PROTECT'] = False
+        app.config['SERVER_NAME'] = 'localhost.test'
+
+        @app.route('/')
+        def index():
+            return "OK"
+
         return app
 
     @pytest.fixture(scope="session")
