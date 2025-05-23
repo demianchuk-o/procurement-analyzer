@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Tuple
 
 from sqlalchemy import select
+from sqlalchemy.sql.expression import func, and_
 from sqlalchemy.orm import Session, selectinload
 
 from models import Tender, GeneralClassifier, UserSubscription, Complaint, User
@@ -57,13 +58,39 @@ class TenderRepository(BaseRepository[Tender]):
         return tenders, total
 
     def get_short_by_ocid_for_status_check(self, ocid: str) -> Optional[Dict]:
-        """ Fetches minimal info for a tender by OCID, optimized for existence check. """
-        tender = self._session.query(Tender.id).filter(Tender.ocid == ocid).first()
-        if tender:
-            return {
-                'id': tender.id
-            }
-        return None
+        """
+        Fetches minimal info for a tender by OCID plus complaint counts:
+          - total_complaints
+          - processed_complaints (highlighted_keywords not empty)
+        """
+        row = (
+            self._session
+            .query(
+                Tender.id.label('id'),
+                func.count(Complaint.id).label('total_complaints'),
+                func.count(Complaint.id)
+                .filter(
+                    and_(
+                        Complaint.tender_id == Tender.id,
+                        Complaint.highlighted_keywords.isnot(None),
+                    )
+                )
+                .label('processed_complaints'),
+            )
+            .outerjoin(Complaint, Complaint.tender_id == Tender.id)
+            .filter(Tender.ocid == ocid)
+            .group_by(Tender.id)
+            .first()
+        )
+
+        if not row:
+            return None
+
+        return {
+            'id': row.id,
+            'total_complaints': row.total_complaints,
+            'processed_complaints': row.processed_complaints
+        }
 
     def get_tenders_short(self, page: int, per_page: int) -> Tuple[List[Dict], int]:
         """
