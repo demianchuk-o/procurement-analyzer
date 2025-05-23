@@ -63,108 +63,73 @@ content %}
 </div>
 {% endblock %} {% block scripts %} {{ super() }}
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const pollingStatusDiv = document.getElementById('polling-status');
-    const ocidToPoll = ('{{ ocid_being_added }}' || '').trim();
+    document.addEventListener('DOMContentLoaded', function () {
+        const pollingStatusDiv = document.getElementById('polling-status');
+        const ocidToPoll = ('{{ ocid_being_added }}' || '').trim();
+        if (!pollingStatusDiv || !ocidToPoll) return;
 
-    console.log(
-      '[PollingScript] DOMContentLoaded fired. OCID to poll:',
-      ocidToPoll
-    );
+        let pollCount = 0;
+        const maxFastPolls = 20;
+        const fastPoll = 1000;
+        const slowPoll = 50000;
+        const maxPolls = maxFastPolls + 18;
+        let timerId = null;
 
-    if (!pollingStatusDiv) {
-      console.error('[PollingScript] Critical: Polling status div not found!');
-      return;
-    }
-
-    if (ocidToPoll) {
-      let pollIntervalId = null;
-      let pollCount = 0;
-      const maxFastPolls = 20;
-      const fastPollDelay = 5000;
-      const slowPollDelay = 10000;
-      const maxTotalPolls = maxFastPolls + 18;
-
-      function updatePollingMessage(message, alertType = 'info') {
-        if (pollingStatusDiv) {
-          pollingStatusDiv.innerHTML = `<div class="alert alert-${alertType}" role="alert">${message}</div>`;
+        function updatePollingMessage(msg, type='info') {
+            pollingStatusDiv.innerHTML =
+                `<div class="alert alert-${type}" role="alert">${msg}</div>`;
         }
-      }
 
-      function stopPolling() {
-        if (pollIntervalId) {
-          clearInterval(pollIntervalId);
-          pollIntervalId = null;
-          console.log('[PollingScript] Polling stopped.');
+        function fetchTenderStatus() {
+            fetch(`/check_tender_status/${ocidToPoll}`)
+                .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+                .then(({ exists, tender_uuid, total_complaints, processed_complaints }) => {
+                    if (exists && processed_complaints >= total_complaints) {
+                        updatePollingMessage(
+                            `Тендер ${ocidToPoll} оброблено (${processed_complaints}/${total_complaints})!`,
+                            'success'
+                        );
+                        clearTimeout(timerId);
+                        return setTimeout(
+                            () => window.location.href = `/tender/tenders/${tender_uuid}`,
+                            1500
+                        );
+                    }
+
+                    pollCount++;
+                    if (pollCount > maxPolls) {
+                        return updatePollingMessage(
+                            `Обробка тендеру ${ocidToPoll} займає забагато часу.`,
+                            'warning'
+                        );
+                    }
+
+                    const delay = pollCount <= maxFastPolls ? fastPoll : slowPoll;
+                    if (!exists) {
+                        updatePollingMessage(
+                            `Перевіряємо додавання тендеру ${ocidToPoll}... (спроба #${pollCount})`
+                        );
+                    } else {
+                        updatePollingMessage(
+                            `Тендер ${ocidToPoll} обробляється. ` +
+                            `Проаналізовано ${processed_complaints}/${total_complaints} скарг. ` +
+                            `Наступна перевірка через ${delay/1000}s (спроба #${pollCount}).`
+                        );
+                    }
+
+                    timerId = setTimeout(fetchTenderStatus, delay);
+                })
+                .catch(err => {
+                    console.error(err);
+                    updatePollingMessage(
+                        `Помилка при перевірці статусу тендеру. Спробуйте оновити сторінку.`,
+                        'danger'
+                    );
+                });
         }
-      }
 
-      function fetchTenderStatus() {
-        stopPolling();
-        console.log(
-          `[PollingScript] Fetching status for ${ocidToPoll}, attempt ${
-            pollCount + 1
-          }`
-        );
-
-        fetch(`/check_tender_status/${ocidToPoll}`)
-          .then((response) => {
-            if (!response.ok) {
-              return response.text().then((text) => {
-                throw new Error(
-                  `Network response was not ok: ${response.status}. Body: ${text}`
-                );
-              });
-            }
-            return response.json();
-          })
-          .then((data) => {
-            if (data.exists && data.tender_uuid) {
-              updatePollingMessage(
-                `Тендер ${ocidToPoll} успішно додано! Перенаправлення...`,
-                'success'
-              );
-              setTimeout(function () {
-                window.location.href = `/tender/tenders/${data.tender_uuid}`;
-              }, 1500);
-            } else {
-              pollCount++;
-              if (pollCount > maxTotalPolls) {
-                updatePollingMessage(
-                  `Обробка тендеру ${ocidToPoll} займає забагато часу. Будь ласка, <a href="${window.location.pathname}?search_ocid=${ocidToPoll}" class="alert-link">оновіть сторінку</a> або перевірте пізніше.`,
-                  'warning'
-                );
-                return;
-              }
-
-              let currentDelay =
-                pollCount <= maxFastPolls ? fastPollDelay : slowPollDelay;
-              const nextCheckTime = currentDelay / 1000;
-              updatePollingMessage(
-                `Обробка тендеру ${ocidToPoll} триває... Перевірка #${pollCount}. Наступна через ${nextCheckTime}с.`
-              );
-              pollIntervalId = setInterval(fetchTenderStatus, currentDelay);
-            }
-          })
-          .catch((error) => {
-            console.error(
-              '[PollingScript] Error polling for tender status:',
-              error
-            );
-            updatePollingMessage(
-              `Помилка при перевірці статусу тендеру ${ocidToPoll}. Спробуйте <a href="${window.location.pathname}?search_ocid=${ocidToPoll}" class="alert-link">оновити сторінку</a>.`,
-              'danger'
-            );
-          });
-      }
-
-      updatePollingMessage(
-        `Перевіряємо статус додавання тендеру ${ocidToPoll}...`
-      );
-      fetchTenderStatus();
-    } else {
-      if (pollingStatusDiv) pollingStatusDiv.innerHTML = '';
-    }
-  });
+        updatePollingMessage(`Старт перевірки тендеру ${ocidToPoll}...`);
+        fetchTenderStatus();
+    });
 </script>
 {% endblock %}

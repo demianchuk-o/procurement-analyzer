@@ -89,12 +89,20 @@ def index():
 
 @app.route('/check_tender_status/<ocid>')
 def check_tender_status(ocid):
-    tender_short_info = tender_repository.get_short_by_ocid_for_status_check(ocid)
-
-    if tender_short_info:
-        return jsonify({"exists": True, "tender_uuid": tender_short_info['id']})
-    else:
-        return jsonify({"exists": False, "tender_uuid": None})
+    info = tender_repository.get_short_by_ocid_for_status_check(ocid)
+    if info:
+        return jsonify({
+            "exists": True,
+            "tender_uuid": info['id'],
+            "total_complaints": info['total_complaints'],
+            "processed_complaints": info['processed_complaints']
+        })
+    return jsonify({
+        "exists": False,
+        "tender_uuid": None,
+        "total_complaints": 0,
+        "processed_complaints": 0
+    })
 
 @app.route('/user_tenders')
 @jwt_required()
