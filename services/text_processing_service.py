@@ -53,9 +53,3 @@ class TextProcessingService:
         except Exception as e:
             self.logger.error(f"Error during processing or storing text: {e}", exc_info=True)
             return False
-
-    # Optional: Add a method to explicitly close/finalize resources if needed,
-    # although the current CorpusWriter doesn't require explicit closing.
-    # def close(self):
-    #     self.logger.info("Closing TextProcessingService.")
-    #     # Add any cleanup logic here if necessary

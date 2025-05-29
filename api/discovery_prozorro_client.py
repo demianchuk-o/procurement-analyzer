@@ -11,7 +11,7 @@ class DiscoveryProzorroClient:
     BASE_URL = 'https://prozorro.gov.ua/api/'
     SEARCH_ENDPOINT = 'search/tenders/'
     TENDER_ENDPOINT = 'tenders/'
-    COMPLAINTS_SUBPATH = 'complaints/'  # Added for the new method
+    COMPLAINTS_SUBPATH = 'complaints/'
 
     def __init__(self, retry_count: int = 3, retry_delay: int = 1, timeout: int = 10) -> None:
         self.retry_count = retry_count
@@ -31,7 +31,7 @@ class DiscoveryProzorroClient:
             except requests.exceptions.RequestException as e:
                 self.logger.error(f"Request error on attempt {attempt}/{self.retry_count} for URL {url}: {e}")
                 if attempt < self.retry_count:
-                    time.sleep(self.retry_delay * attempt) # Exponential backoff can be better
+                    time.sleep(self.retry_delay * attempt)
             except Exception as e:
                  self.logger.error(f"Unexpected error on attempt {attempt}/{self.retry_count} for URL {url}: {e}")
                  break
