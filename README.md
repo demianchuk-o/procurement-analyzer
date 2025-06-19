@@ -81,6 +81,7 @@ This project is fully containerized using Docker, so you do not need to install 
     Open the new `.env` file and fill in the required values, especially:
     *   `SECRET_KEY` and `JWT_SECRET_KEY` for the Flask application.
     *   `DB_USER`, `DB_PASSWORD`, and `DB_NAME` for the PostgreSQL database.
+    *   `SMTP_SERVER`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASSWORD` for email notifications.
 
 3.  **Build and run the application:**
     Use Docker Compose to build the images and start all the services (web app, database, Redis, and Celery workers).
