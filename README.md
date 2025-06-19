@@ -1,4 +1,10 @@
 # ProcurementAnalyser
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![Flask](https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white)
+![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
+![Celery](https://img.shields.io/badge/celery-%2337814A.svg?style=for-the-badge&logo=celery&logoColor=white)
+![Redis](https://img.shields.io/badge/redis-CC0000.svg?&style=for-the-badge&logo=redis&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-%23F7931E.svg?style=for-the-badge&logo=scikit-learn&logoColor=white)
 
 An automated monitoring and analysis system for Ukrainian public tenders. This project integrates with Prozorro public procurement APIs to track tender updates, analyzes tender complaints using Natural Language Processing (NLP) to identify potential violations, and notifies subscribed users of significant changes.
 
@@ -41,3 +47,74 @@ When a new complaint is added to a tender in the system, an asynchronous Celery 
 *   **Keyword Matching:** The system compares the lemmatized tokens from the complaint against the pre-computed list of keywords for each violation domain.
 *   **Logarithmic Scoring:** A score is calculated for each domain based on the keywords found. Instead of simply counting occurrences, the system uses a logarithmic weighting function (`math.log1p`). This means the first occurrence of a keyword adds a significant value to the score, while each subsequent occurrence of the same keyword provides a diminishing return. This approach rewards complaints that contain a diverse set of violation-related keywords over those that simply repeat the same term.
 *   **Cumulative Score Update:** The calculated scores from the new complaint are added to the tender's existing `ViolationScore`. This cumulative model allows the system to build a dynamic risk profile for a tender over time, as multiple complaints can progressively increase the score in one or more violation domains. The results, including highlighted keywords in the original text, are then displayed to the user.
+
+### Tech Stack
+
+*   **Backend:** Python, Flask
+*   **Database:** PostgreSQL with SQLAlchemy ORM
+*   **Asynchronous Tasks:** Celery with Redis as the message broker
+*   **NLP & Machine Learning:** spaCy, scikit-learn, langtools
+*   **Frontend Templating:** Jinja2
+*   **Containerization:** Docker, Docker Compose
+
+### Setup & Installation
+
+This project is fully containerized using Docker, so you do not need to install Python or PostgreSQL on your host machine.
+
+**Prerequisites:**
+*   Docker
+*   Docker Compose
+
+**Steps:**
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/demianchuk-o/ProcurementAnalyser.git
+    cd ProcurementAnalyser
+    ```
+
+2.  **Configure environment variables:**
+    Create a `.env` file by copying the example file.
+    ```bash
+    cp .env.example .env
+    ```
+    Open the new `.env` file and fill in the required values, especially:
+    *   `SECRET_KEY` and `JWT_SECRET_KEY` for the Flask application.
+    *   `DB_USER`, `DB_PASSWORD`, and `DB_NAME` for the PostgreSQL database.
+
+3.  **Build and run the application:**
+    Use Docker Compose to build the images and start all the services (web app, database, Redis, and Celery workers).
+    ```bash
+    docker-compose up --build -d
+    ```
+    The `-d` flag runs the containers in detached mode. The first time you run this, Docker will download the necessary base images and build the application image, which may take a few minutes.
+
+    Database migrations are applied automatically when the `web` container starts.
+
+### Usage
+
+#### Web Application
+Once the containers are running, the web application will be accessible at `http://localhost:5000`.
+
+#### Background Services
+The `docker-compose.yml` configuration automatically starts all necessary background services:
+*   **`celery_beat`**: Schedules periodic tasks like crawling for new tender data.
+*   **`celery_default`**: A worker that processes general tasks, including data processing and NLP analysis.
+*   **`celery_email`**: A dedicated worker for sending email notifications.
+
+You can view the logs for any service using `docker-compose logs -f <service_name>`, for example: `docker-compose logs -f celery_default`.
+
+#### Running Integration Tests
+The project includes a separate Docker Compose configuration for running integration tests against a dedicated test database.
+
+1.  **Run tests:**
+    ```bash
+    make integration-test
+    ```
+    This command will spin up a test environment, run the `pytest` suite, and then shut down.
+
+2.  **Clean up test environment:**
+    If you need to manually stop and remove the test containers and volumes, run:
+    ```bash
+    make integration-clean
+    ```
