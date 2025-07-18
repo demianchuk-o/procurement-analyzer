@@ -147,7 +147,7 @@ For example, in the complaint text below, the keyword "Замовник" ("Custo
 [<img src="docs/images/highlighted_keywords.png" alt="Highlighted Keywords" width="600">](https://github.com/demianchuk-o/procurement-analyzer/blob/dev/docs/images/highlighted_keywords.png)
 
 **4. Detailed Change Tracking**
-Subscribed users can see a precise history of what has changed in a tender's data over time.
+Subscribed users can see a precise history of what has changed in a tender's data over time. <br>
 [<img src="docs/images/tender_changes.png" alt="Change History" width="600">](https://github.com/demianchuk-o/procurement-analyzer/blob/dev/docs/images/tender_changes.png)
 
 **5. Automated Email Notifications**
