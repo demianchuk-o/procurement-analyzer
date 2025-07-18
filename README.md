@@ -119,3 +119,37 @@ The project includes a separate Docker Compose configuration for running integra
     ```bash
     make integration-clean
     ```
+
+### Features in Action
+
+Here's a visual overview of the core functionalities:
+
+**1. Comprehensive Tender View**
+The main tender page displays all essential information, providing a complete overview at a glance.
+This includes details like the tender's status, value, related documents and bids, dates of creation and modification, and other dates relevant to the tender's lifecycle. The page also shows the cumulative violation score and a list of complaints associated with the tender.
+[<img src="docs/images/processed_tender.png" alt="Tender Overview" width="600">](https://github.com/demianchuk-o/procurement-analyzer/blob/dev/docs/images/processed_tender.png)
+
+**2. NLP-Powered Violation Analysis**
+The system analyzes complaint texts to score potential violations, turning unstructured text into quantitative data.
+The analysis categorizes violations into specific domains, as seen in the example below:
+* Supply of goods and contractual obligations,
+* Financial guarantees and bank security,
+* Evaluation of proposals and qualification of participants,
+* Legislation and regulation of tenders
+
+and more.
+Each domain is assigned a score based on the presence of relevant keywords in the complaint text, allowing users to quickly assess the risk associated with a tender.
+[<img src="docs/images/violation_scores.png" alt="Violation Analysis" width="600">](https://github.com/demianchuk-o/procurement-analyzer/blob/dev/docs/images/violation_scores.png)
+
+**3. Keyword Highlighting**
+To provide transparency, the system highlights the specific keywords within a complaint that contributed to its violation score.
+For example, in the complaint text below, the keyword "Замовник" ("Customer"), among other keywords, is highlighted, and on hover, the user can see what violation domains it relates to.
+[<img src="docs/images/highlighted_keywords.png" alt="Highlighted Keywords" width="600">](https://github.com/demianchuk-o/procurement-analyzer/blob/dev/docs/images/highlighted_keywords.png)
+
+**4. Detailed Change Tracking**
+Subscribed users can see a precise history of what has changed in a tender's data over time.
+[<img src="docs/images/tender_changes.png" alt="Change History" width="600">](https://github.com/demianchuk-o/procurement-analyzer/blob/dev/docs/images/tender_changes.png)
+
+**5. Automated Email Notifications**
+Users receive detailed email notifications summarizing any changes detected in the tenders they follow. The report includes the short information about the tender, a list of recent tender changes, new entites added and changes in these related entities.
+[<img src="docs/images/email_notification.png" alt="Email notification example" width="600">](https://github.com/demianchuk-o/procurement-analyzer/blob/dev/docs/images/email_notification.png)
