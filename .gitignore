@@ -1,5 +1,11 @@
 .venv
+coverage_venv/
 .idea
+
+__pycache__/
+*.pyc
+
+.coverage
 
 .env
 !.env.example
